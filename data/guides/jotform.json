@@ -1,0 +1,64 @@
+{
+  "id": "jotform",
+  "appName": "Jotform",
+  "category": "Forms & Surveys",
+  "authType": "api_key",
+  "icon": "FileCheck",
+  "verdict": {
+    "difficulty": "trivial",
+    "handsOnMinutes": 5,
+    "approvalWaitDays": 0,
+    "oneLineSummary": "HONESTY NOTICE: Jotform does NOT support OAuth 2.0. Integrations use API Keys directly."
+  },
+  "twoClocks": {
+    "worksInDev": "~5 min (generate API key in account settings)",
+    "anyUserCanConnect": "Immediate (prompt user for API Key — no OAuth approval exists)"
+  },
+  "cost": "Free (Free account tier includes 100 submissions/mo)",
+  "capabilityCheck": {
+    "question": "Can an agent create forms, fetch submissions, and read responses?",
+    "verdict": "full",
+    "detail": "Jotform's REST API is fully functional for creating forms and reading submissions using an API Key. However, because there is NO OAuth 2.0 flow, you cannot offer a 1-click 'Connect with Jotform' popup. Your agent must prompt the user to paste an API Key."
+  },
+  "prerequisites": ["A Jotform account"],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "text": "Log into Jotform → Settings → API → Create New Key.",
+      "owner": "YOU",
+      "portalUrl": "https://www.jotform.com/myaccount/api",
+      "fields": [
+        { "name": "Key Name", "action": "fill", "valueOrAdvice": "e.g. Agent Access Key" },
+        { "name": "Permissions", "action": "watch", "note": "Defaults to 'Read Access'. Switch to 'Full Access' if your agent needs to create or modify forms." }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "text": "Store and encrypt the API key in your secure agent credentials vault.",
+      "owner": "AGENT",
+      "note": "Prompt the user during onboarding: 'Please enter your Jotform API Key'."
+    }
+  ],
+  "scopes": [],
+  "blockers": [
+    {
+      "class": "setup",
+      "issue": "Developers search in vain for OAuth App creation screens in Jotform. Jotform only supports API key authentication.",
+      "workaround": "Do not attempt to build an OAuth redirect flow. Use API Key authentication with user-provided tokens.",
+      "severity": "medium"
+    }
+  ],
+  "composio": {
+    "managed": true,
+    "savedDays": 0,
+    "recommendation": "Composio provides managed API Key storage and tool actions for Jotform, handling encrypted credential storage and request signing.",
+    "link": "https://docs.composio.dev/toolkits/managed-auth"
+  },
+  "evidence": [
+    {
+      "claim": "Confirmed from official Jotform documentation: Jotform API uses API Key authentication; OAuth 2.0 is not supported.",
+      "label": "TESTED",
+      "sourceUrl": "https://api.jotform.com/docs/"
+    }
+  ]
+}

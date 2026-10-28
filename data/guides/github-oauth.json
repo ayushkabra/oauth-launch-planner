@@ -1,0 +1,77 @@
+{
+  "id": "github-oauth",
+  "appName": "GitHub (OAuth App)",
+  "category": "Developer Tools",
+  "authType": "oauth2",
+  "icon": "GitBranch",
+  "verdict": {
+    "difficulty": "trivial",
+    "handsOnMinutes": 10,
+    "approvalWaitDays": 0,
+    "oneLineSummary": "The gold standard baseline: 10 minutes setup, 0 days wait, immediate public access."
+  },
+  "twoClocks": {
+    "worksInDev": "~10 min",
+    "anyUserCanConnect": "Same day — no provider review required"
+  },
+  "cost": "Free",
+  "capabilityCheck": {
+    "question": "Can an agent read AND write on the user's behalf?",
+    "verdict": "full",
+    "detail": "OAuth scopes grant read and write to repositories, issues, pull requests, and gists per the scopes requested. No capability ceiling for standard agent workflows."
+  },
+  "prerequisites": ["A GitHub personal or organization account"],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "text": "Go to Settings → Developer settings → OAuth Apps → New OAuth App. (Avoid 'GitHub Apps' if you only want basic user auth).",
+      "owner": "YOU",
+      "portalUrl": "https://github.com/settings/developers",
+      "fields": [
+        { "name": "Application name", "action": "fill", "valueOrAdvice": "e.g. Agent GitHub Sync" },
+        { "name": "Homepage URL", "action": "fill", "valueOrAdvice": "http://localhost:3000 or your repo URL" },
+        { "name": "Application description", "action": "leave", "note": "Optional cosmetic field" },
+        { "name": "Authorization callback URL", "action": "fill", "valueOrAdvice": "http://localhost:3000/api/auth/callback/github", "note": "Must match your redirect URI exactly" },
+        { "name": "Enable Device Flow", "action": "leave", "note": "Unchecked unless building a headless CLI / terminal tool" }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "text": "Register the application, copy the Client ID, and click 'Generate a new client secret'.",
+      "owner": "YOU",
+      "note": "Save the client secret immediately; it will never be displayed again."
+    },
+    {
+      "stepNumber": 3,
+      "text": "Request scopes dynamically at connect time inside your application authorization URL.",
+      "owner": "AGENT",
+      "note": "Unlike Google or Slack, GitHub OAuth Apps do not pre-register scopes in the console; scopes are requested dynamically in the OAuth URL query parameter."
+    }
+  ],
+  "scopes": [
+    { "scope": "read:user", "triggersReview": false, "tier": "non-sensitive", "note": "Basic user profile and email" },
+    { "scope": "repo", "triggersReview": false, "tier": "sensitive", "note": "Full read/write access to code, issues, and PRs (instant, no review)" },
+    { "scope": "workflow", "triggersReview": false, "tier": "sensitive", "note": "GitHub Actions workflow management" }
+  ],
+  "blockers": [
+    {
+      "class": "setup",
+      "issue": "Developers frequently click 'New GitHub App' instead of 'New OAuth App'. GitHub Apps enforce a required Webhook URL if the 'Active' checkbox is checked.",
+      "workaround": "Choose 'OAuth Apps' for simple user connections. If using GitHub Apps, uncheck Webhook → Active.",
+      "severity": "medium"
+    }
+  ],
+  "composio": {
+    "managed": true,
+    "savedDays": 0,
+    "recommendation": "Composio provides instant managed GitHub connections out of the box with zero OAuth app registration needed.",
+    "link": "https://docs.composio.dev/toolkits/managed-auth"
+  },
+  "evidence": [
+    {
+      "claim": "Registered a GitHub OAuth app end-to-end in ~10 minutes with no provider review; any public user can authorize immediately.",
+      "label": "TESTED",
+      "sourceUrl": "https://github.com/settings/developers"
+    }
+  ]
+}

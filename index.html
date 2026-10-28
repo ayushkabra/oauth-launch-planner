@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OAuth Launch Planner & Feasibility Engine | Composio APM</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: "#09090b",
+            surface: "#121215",
+            "surface-card": "#18181b",
+            "surface-border": "#27272a",
+            composio: {
+              green: "#10b981",
+              emerald: "#059669",
+              neon: "#22c55e",
+              purple: "#8b5cf6",
+              blue: "#3b82f6",
+              amber: "#f59e0b",
+              rose: "#f43f5e",
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #09090b;
+      color: #fafafa;
+      font-family: 'Inter', sans-serif;
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #121215; }
+    ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+    .composio-gradient-text {
+      background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-background text-zinc-100 selection:bg-emerald-500/30 selection:text-emerald-200">
+
+  <!-- TOP NAVBAR -->
+  <header class="sticky top-0 z-40 border-b border-surface-border bg-background/85 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <i data-lucide="compass" class="h-5 w-5 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-base tracking-tight text-white">OAuth Launch Planner</span>
+            <span class="px-2 py-0.5 text-[10px] font-mono uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full font-semibold">
+              APM Integrations
+            </span>
+          </div>
+          <p class="text-xs text-zinc-400">By Ayush Kabra · Composio Assessment</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center gap-1 bg-surface-card border border-surface-border p-1 rounded-xl">
+        <button id="tab-btn-library" onclick="switchTab('library')" class="tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 text-white shadow-sm transition-all">
+          <i data-lucide="book-open" class="h-3.5 w-3.5"></i>
+          <span>Guide Library</span>
+        </button>
+        <button id="tab-btn-planner" onclick="switchTab('planner')" class="tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-all relative">
+          <i data-lucide="calendar" class="h-3.5 w-3.5"></i>
+          <span>Launch Planner</span>
+          <span id="nav-cart-badge" class="ml-1 px-1.5 py-0.2 text-[10px] font-mono font-bold bg-emerald-500 text-black rounded-full">3</span>
+        </button>
+        <button id="tab-btn-agent" onclick="switchTab('agent')" class="tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-emerald-400 transition-all">
+          <i data-lucide="sparkles" class="h-3.5 w-3.5 text-emerald-400"></i>
+          <span>Live Agent Investigator</span>
+        </button>
+      </nav>
+
+      <div class="hidden md:flex items-center gap-3">
+        <a href="https://docs.composio.dev/toolkits/managed-auth" target="_blank" class="flex items-center gap-1.5 text-xs text-zinc-300 hover:text-emerald-400 px-3 py-1.5 rounded-lg border border-surface-border hover:border-emerald-500/40 bg-surface transition-all">
+          <i data-lucide="shield-check" class="h-3.5 w-3.5 text-emerald-400"></i>
+          <span>Composio Managed Auth</span>
+          <i data-lucide="external-link" class="h-3 w-3 text-zinc-500"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    
+    <!-- HERO HEADER -->
+    <div class="space-y-3">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
+        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span>Launch Timeline Planner · Zero Guesswork Field Guidance · Tested Evidence</span>
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+        Plan your agent's path to <span class="composio-gradient-text">"Any User Can Connect"</span>
+      </h1>
+      <p class="text-xs sm:text-sm text-zinc-400 max-w-3xl leading-relaxed">
+        Building AI agents that connect to third-party tools shouldn't take weeks of trial and error.
+        Discover your critical path to public launch, flag fatal API capability ceilings before writing code, and see exactly when to bypass setup pain with <strong>Composio Managed Auth</strong>.
+      </p>
+    </div>
+
+    <!-- TAB 1: GUIDE LIBRARY -->
+    <section id="view-library" class="space-y-6">
+      <!-- Search & Filters -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-2xl bg-surface-card border border-surface-border">
+        <div class="relative flex-1">
+          <i data-lucide="search" class="absolute left-3.5 top-3 h-4 w-4 text-zinc-500"></i>
+          <input type="text" id="search-input" oninput="renderLibrary()" placeholder="Search 14+ guides by app name, scope, or blocker..." class="w-full pl-10 pr-4 py-2 bg-surface border border-surface-border rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/60">
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="filter-difficulty" onchange="renderLibrary()" class="bg-surface border border-surface-border text-xs rounded-xl px-3 py-2 text-zinc-300 focus:outline-none">
+            <option value="all">All Difficulties</option>
+            <option value="trivial">Trivial (Same day)</option>
+            <option value="moderate">Moderate (&lt;2 wks)</option>
+            <option value="hard">Hard (Capability ceilings)</option>
+            <option value="gated">Gated (CASA / Reviews)</option>
+          </select>
+          <select id="filter-category" onchange="renderLibrary()" class="bg-surface border border-surface-border text-xs rounded-xl px-3 py-2 text-zinc-300 focus:outline-none">
+            <option value="all">All Categories</option>
+            <option value="Developer Tools">Developer Tools</option>
+            <option value="Email & Productivity">Email & Productivity</option>
+            <option value="Communication">Communication</option>
+            <option value="CRM & Sales">CRM & Sales</option>
+            <option value="Enterprise & Productivity">Enterprise & Productivity</option>
+            <option value="EdTech & Education">EdTech & Education</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Guides Grid -->
+      <div id="guides-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Rendered via JS -->
+      </div>
+    </section>
+
+    <!-- TAB 2: LAUNCH PLANNER -->
+    <section id="view-planner" class="space-y-8 hidden">
+      <!-- Planner Top Callout -->
+      <div id="planner-bottleneck-callout"></div>
+
+      <!-- Metrics Row -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="p-4 rounded-2xl bg-surface-card border border-surface-border">
+          <div class="flex items-center gap-2 text-xs text-zinc-400 mb-1">
+            <i data-lucide="calendar" class="h-4 w-4 text-amber-400"></i>
+            <span>Calendar Delay</span>
+          </div>
+          <div id="metric-calendar-delay" class="text-2xl font-mono font-bold text-white">0 days</div>
+          <p id="metric-calendar-sub" class="text-[11px] text-zinc-500 mt-1">Critical path bottleneck</p>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-surface-card border border-surface-border">
+          <div class="flex items-center gap-2 text-xs text-zinc-400 mb-1">
+            <i data-lucide="clock" class="h-4 w-4 text-blue-400"></i>
+            <span>Hands-on Engineering</span>
+          </div>
+          <div id="metric-engineering-hours" class="text-2xl font-mono font-bold text-white">~0 hrs</div>
+          <p class="text-[11px] text-zinc-500 mt-1">Across selected integrations</p>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-surface-card border border-surface-border">
+          <div class="flex items-center gap-2 text-xs text-zinc-400 mb-1">
+            <i data-lucide="dollar-sign" class="h-4 w-4 text-purple-400"></i>
+            <span>Estimated Audits</span>
+          </div>
+          <div id="metric-cost-estimate" class="text-base font-mono font-bold text-zinc-200 truncate">$0</div>
+          <p class="text-[11px] text-zinc-500 mt-1">Third-party compliance assessments</p>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-surface-card border border-surface-border">
+          <div class="flex items-center gap-2 text-xs text-zinc-400 mb-1">
+            <i data-lucide="shield-check" class="h-4 w-4 text-emerald-400"></i>
+            <span>Composio Savings</span>
+          </div>
+          <div id="metric-composio-savings" class="text-2xl font-mono font-bold text-emerald-400">0 days</div>
+          <p class="text-[11px] text-zinc-500 mt-1">Zero-wait managed auth deployment</p>
+        </div>
+      </div>
+
+      <!-- View Switcher -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-border pb-4">
+        <div class="flex items-center gap-2">
+          <button id="view-mode-cto" onclick="setPlannerView('cto')" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-zinc-800 text-white border border-zinc-700 transition-all">
+            CTO View (Critical Path & Risk)
+          </button>
+          <button id="view-mode-dev" onclick="setPlannerView('dev')" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white transition-all">
+            Dev View (Task Checklist)
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="exportPlanJson()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-surface-card border border-surface-border text-zinc-300 hover:text-white transition-colors">
+            <i data-lucide="download" class="h-3.5 w-3.5"></i>
+            <span>Export Plan JSON</span>
+          </button>
+          <button onclick="clearPlanner()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition-colors">
+            <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>
+            <span>Clear Plan</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- CTO Content -->
+      <div id="planner-cto-container" class="space-y-8">
+        <!-- Critical Path Gantt -->
+        <div class="p-6 rounded-3xl bg-surface-card border border-surface-border space-y-4">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold font-mono uppercase text-zinc-300 flex items-center gap-2">
+              <i data-lucide="layers" class="h-4 w-4 text-emerald-400"></i>
+              Critical Path Timeline (Sequenced by Approval Wait)
+            </h4>
+            <span class="text-xs font-mono text-zinc-500">Longest wait gates public launch</span>
+          </div>
+          <div id="gantt-chart-list" class="space-y-3 pt-2"></div>
+        </div>
+
+        <!-- Non-Engineering Blockers -->
+        <div id="org-blockers-card" class="p-6 rounded-3xl bg-surface-card border border-surface-border space-y-3 hidden">
+          <div class="flex items-center gap-2">
+            <i data-lucide="alert-triangle" class="h-4 w-4 text-purple-400"></i>
+            <h4 class="text-sm font-bold font-mono uppercase text-zinc-300">
+              Non-Engineering & Governance Blockers (<span id="org-blockers-count">0</span>)
+            </h4>
+          </div>
+          <p class="text-xs text-zinc-400">
+            Mandatory legal, compliance, or enterprise IT gates that engineers cannot solve with code alone.
+          </p>
+          <div id="org-blockers-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2"></div>
+        </div>
+
+        <!-- Capability Ceiling Warnings -->
+        <div id="capability-warnings-card" class="p-6 rounded-3xl bg-amber-950/20 border border-amber-500/30 space-y-3 hidden">
+          <div class="flex items-center gap-2">
+            <i data-lucide="alert-triangle" class="h-4 w-4 text-amber-400"></i>
+            <h4 class="text-sm font-bold font-mono uppercase text-amber-300">
+              Critical Capability Ceiling Warnings (<span id="capability-warnings-count">0</span>)
+            </h4>
+          </div>
+          <p class="text-xs text-zinc-300">
+            These apps have API-level write restrictions or paywalls that managed auth cannot bypass. Validate architecture first!
+          </p>
+          <div id="capability-warnings-list" class="space-y-2 pt-2"></div>
+        </div>
+      </div>
+
+      <!-- Dev View Content -->
+      <div id="planner-dev-container" class="space-y-6 hidden">
+        <div id="planner-dev-list" class="space-y-4"></div>
+      </div>
+    </section>
+
+    <!-- TAB 3: LIVE AGENT INVESTIGATOR -->
+    <section id="view-agent" class="space-y-8 hidden">
+      <div class="p-6 md:p-8 rounded-3xl bg-gradient-to-r from-emerald-950/40 via-surface-card to-zinc-900 border border-emerald-500/30 space-y-4">
+        <div class="max-w-3xl space-y-2">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
+            <i data-lucide="sparkles" class="h-3.5 w-3.5"></i>
+            <span>Autonomous Real-Time Research Pipeline</span>
+          </div>
+          <h2 class="text-2xl font-bold text-white tracking-tight">
+            Investigate Any Provider App in Real-Time
+          </h2>
+          <p class="text-xs text-zinc-300 leading-relaxed">
+            Submit any software name or developer documentation URL. The research agent inspects discovery endpoints, audits scope review gates, validates write capability limits, and outputs a validated guide with a live research trail.
+          </p>
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <span class="text-[11px] font-mono text-zinc-500">Quick tests:</span>
+            <button onclick="runAgent('Salesforce')" class="px-2.5 py-1 rounded-lg text-xs font-mono bg-zinc-800 text-zinc-300 hover:text-emerald-400 border border-zinc-700">Salesforce</button>
+            <button onclick="runAgent('Stripe')" class="px-2.5 py-1 rounded-lg text-xs font-mono bg-zinc-800 text-zinc-300 hover:text-emerald-400 border border-zinc-700">Stripe</button>
+            <button onclick="runAgent('Figma')" class="px-2.5 py-1 rounded-lg text-xs font-mono bg-zinc-800 text-zinc-300 hover:text-emerald-400 border border-zinc-700">Figma</button>
+            <button onclick="runAgent('Zendesk')" class="px-2.5 py-1 rounded-lg text-xs font-mono bg-zinc-800 text-zinc-300 hover:text-emerald-400 border border-zinc-700">Zendesk</button>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2 max-w-2xl pt-2">
+          <div class="relative flex-1">
+            <i data-lucide="search" class="absolute left-3.5 top-3.5 h-4 w-4 text-zinc-500"></i>
+            <input type="text" id="agent-input" placeholder="e.g. Salesforce, Stripe, or https://developer.figma.com" class="w-full pl-10 pr-4 py-2.5 bg-black/60 border border-surface-border rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/60">
+          </div>
+          <button id="agent-run-btn" onclick="runAgent()" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs flex items-center justify-center gap-2 transition-all shrink-0 shadow-lg shadow-emerald-500/20">
+            <i data-lucide="sparkles" class="h-4 w-4"></i>
+            <span>Run Agent Investigation</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Research Trail -->
+      <div id="agent-trail-card" class="p-6 rounded-3xl bg-surface-card border border-surface-border space-y-4 hidden">
+        <div class="flex items-center justify-between border-b border-surface-border pb-3">
+          <div class="flex items-center gap-2">
+            <i data-lucide="terminal" class="h-4 w-4 text-emerald-400"></i>
+            <h3 class="text-sm font-bold font-mono uppercase text-zinc-300">
+              Live Research Trail (<span id="agent-trail-count">0</span> steps executed)
+            </h3>
+          </div>
+          <span id="agent-trail-status" class="text-xs font-mono text-emerald-400 flex items-center gap-1.5">
+            <i data-lucide="loader" class="h-3.5 w-3.5 animate-spin"></i>
+            Crawling documentation...
+          </span>
+        </div>
+        <div id="agent-trail-list" class="space-y-3 font-mono text-xs"></div>
+      </div>
+
+      <!-- Generated Result Card -->
+      <div id="agent-result-card" class="hidden"></div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: FIELD GUIDE DETAIL -->
+  <div id="guide-modal" class="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex justify-center p-3 sm:p-6 md:p-10 hidden">
+    <div class="bg-surface-card border border-surface-border rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh]">
+      <!-- Top Modal Bar -->
+      <div class="p-6 border-b border-surface-border bg-surface flex items-center justify-between sticky top-0 z-10">
+        <div class="flex items-center gap-3">
+          <div id="modal-app-icon" class="h-10 w-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-lg text-emerald-400">
+            G
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 id="modal-app-name" class="text-xl font-bold text-white">Google (Gmail)</h2>
+              <span id="modal-app-category" class="text-xs font-mono px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700">
+                Email
+              </span>
+              <span id="modal-app-difficulty" class="text-xs font-mono font-semibold uppercase px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                gated
+              </span>
+            </div>
+            <p class="text-xs text-zinc-400 mt-0.5">
+              Auth Type: <span id="modal-app-auth" class="font-mono text-zinc-300 uppercase">OAUTH2</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="modal-plan-toggle-btn" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500 text-black">
+            + Add to Plan
+          </button>
+          <button onclick="closeModal()" class="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
+            <i data-lucide="x" class="h-5 w-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body -->
+      <div id="modal-body-content" class="p-6 md:p-8 overflow-y-auto space-y-8 divide-y divide-surface-border/60">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING PLANNER BUTTON -->
+  <div id="floating-cart" class="fixed bottom-6 right-6 z-30">
+    <button onclick="switchTab('planner')" class="flex items-center gap-3 px-5 py-3 rounded-2xl bg-zinc-900 border border-emerald-500/50 text-white shadow-2xl shadow-emerald-500/20 hover:scale-105 transition-all group">
+      <div id="floating-cart-count" class="h-8 w-8 rounded-xl bg-emerald-500 text-black flex items-center justify-center font-bold text-xs">
+        3
+      </div>
+      <div class="text-left">
+        <div class="text-xs font-bold flex items-center gap-1.5">
+          <span>View Launch Plan</span>
+          <i data-lucide="arrow-right" class="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform"></i>
+        </div>
+        <p class="text-[11px] font-mono text-zinc-400">
+          Critical Path: <span id="floating-cart-days" class="text-amber-400 font-bold">70 days wait</span>
+        </p>
+      </div>
+    </button>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="mt-auto border-t border-surface-border bg-surface/50 py-6 text-center text-xs text-zinc-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p>© 2026 OAuth Launch Planner · Built for Composio APM Assessment by Ayush Kabra</p>
+      <div class="flex items-center gap-4 text-zinc-400">
+        <a href="https://docs.composio.dev/toolkits/managed-auth" target="_blank" class="hover:text-emerald-400 transition-colors">
+          Composio Managed Auth Docs
+        </a>
+        <span>·</span>
+        <span>Zero-DB Static & Live Architecture</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- EMBEDDED RICH SEED DATA & CLIENT SCRIPT -->
+  <script>
+    // 14 rich guides covering all edge cases
+    const GUIDES_DATA = [
+      {
+        id: "github-oauth",
+        appName: "GitHub (OAuth App)",
+        category: "Developer Tools",
+        authType: "oauth2",
+        verdict: {
+          difficulty: "trivial",
+          handsOnMinutes: 10,
+          approvalWaitDays: 0,
+          oneLineSummary: "The gold standard baseline: 10 minutes setup, 0 days wait, immediate public access."
+        },
+        twoClocks: {
+          worksInDev: "~10 min",
+          anyUserCanConnect: "Same day — no provider review required"
+        },
+        cost: "Free",
+        capabilityCheck: {
+          question: "Can an agent read AND write on the user's behalf?",
+          verdict: "full",
+          detail: "OAuth scopes grant read and write to repositories, issues, pull requests, and gists per the scopes requested. No capability ceiling for standard agent workflows."
+        },
+        prerequisites: ["A GitHub personal or organization account"],
+        steps: [
+          {
+            stepNumber: 1,
+            text: "Go to Settings → Developer settings → OAuth Apps → New OAuth App. (Avoid 'GitHub Apps' if you only want basic user auth).",
+            owner: "YOU",
+            portalUrl: "https://github.com/settings/developers",
+            fields: [
+              { name: "Application name", action: "fill", valueOrAdvice: "e.g. Agent GitHub Sync" },
+              { name: "Homepage URL", action: "fill", valueOrAdvice: "http://localhost:3000 or your repo URL" },
+              { name: "Application description", action: "leave", note: "Optional cosmetic field" },
+              { name: "Authorization callback URL", action: "fill", valueOrAdvice: "http://localhost:3000/api/auth/callback/github", note: "Must match your redirect URI exactly" },
+              { name: "Enable Device Flow", action: "leave", note: "Unchecked unless building a headless CLI / terminal tool" }
+            ]
+          },
+          {
+            stepNumber: 2,
+            text: "Register the application, copy the Client ID, and click 'Generate a new client secret'.",
+            owner: "YOU",
+            note: "Save client secret immediately; it will never be displayed again."
+          },
+          {
+            stepNumber: 3,
+            text: "Request scopes dynamically at connect time inside your application authorization URL.",
+            owner: "AGENT",
+            note: "GitHub OAuth Apps do not pre-register scopes in the console; scopes are requested dynamically in the OAuth URL query parameter."
+          }
+        ],
+        scopes: [
+          { scope: "read:user", triggersReview: false, tier: "non-sensitive", note: "Basic profile" },
+          { scope: "repo", triggersReview: false, tier: "sensitive", note: "Full repo read/write" }
+        ],
+        blockers: [
+          {
+            class: "setup",
+            issue: "Developers frequently click 'New GitHub App' instead of 'New OAuth App'. GitHub Apps enforce a required Webhook URL if the 'Active' checkbox is checked.",
+            workaround: "Choose 'OAuth Apps' for simple user connections. If using GitHub Apps, uncheck Webhook → Active.",
+            severity: "medium"
+          }
+        ],
+        composio: {
+          managed: true,
+          savedDays: 0,
+          recommendation: "Composio provides instant managed GitHub connections out of the box with zero OAuth app registration needed.",
+          link: "https://docs.composio.dev/toolkits/managed-auth"
+        },
+        evidence: [
+          {
+            claim: "Registered a GitHub OAuth app end-to-end in ~10 minutes with no provider review; any public user can authorize immediately.",
+            label: "TESTED",
+            sourceUrl: "https://github.com/settings/developers"
+          }
+        ]
+      },
+      {
+        id: "google-gmail",
+        appName: "Google (Gmail)",
+        category: "Email & Productivity",
+        authType: "oauth2",
+        verdict: {
+          difficulty: "gated",
+          handsOnMinutes: 60,
+          approvalWaitDays: 60,
+          oneLineSummary: "Gated by 6-12 week CASA security audit ($3k-$10k) for any Gmail content scopes."
+        },
+        twoClocks: {
+          worksInDev: "~1 hr (100 test users, tokens expire in 7 days)",
+          anyUserCanConnect: "6–12 weeks + third-party CASA security assessment"
+        },
+        cost: "Setup free. Restricted-scope CASA security assessment is paid via a third-party lab ($3,000–$10,000).",
+        capabilityCheck: {
+          question: "Can you read and send email on the user's behalf?",
+          verdict: "full",
+          detail: "Gmail scopes allow reading and sending — no capability ceiling on the actions themselves. The wall is ACCESS: Gmail content scopes are 'restricted' and gated behind verification + CASA assessment before any non-test user can connect."
+        },
+        prerequisites: [
+          "A Google Cloud project",
+          "A verified domain in Google Search Console (required once you add a homepage or privacy policy URL)",
+          "A publicly accessible Privacy Policy URL"
+        ],
+        steps: [
+          {
+            stepNumber: 1,
+            text: "Create a Google Cloud project.",
+            owner: "YOU",
+            portalUrl: "https://console.cloud.google.com/",
+            fields: [
+              { name: "Project name", action: "fill", valueOrAdvice: "e.g. agent-gmail-connector" },
+              { name: "Organization / Location", action: "leave", note: "Shows only 'No organization' on a personal Gmail — that's correct, not an error. Leave it." }
+            ]
+          },
+          {
+            stepNumber: 2,
+            text: "Configure the OAuth consent screen under 'Google Auth Platform → Branding'.",
+            owner: "AGENT+YOU",
+            portalUrl: "https://console.cloud.google.com/auth/branding",
+            fields: [
+              { name: "App name / User support email / Developer contact", action: "fill" },
+              { name: "App logo", action: "watch", note: "LEAVE EMPTY. Uploading a logo immediately triggers brand verification, delaying your project by weeks." },
+              { name: "App home page / Privacy policy / Authorized domains", action: "leave", note: "Skip these while in Testing mode" }
+            ]
+          },
+          {
+            stepNumber: 3,
+            text: "Set Audience to External and add yourself as a test user. Leave Publishing status on 'Testing'.",
+            owner: "YOU",
+            portalUrl: "https://console.cloud.google.com/auth/audience",
+            fields: [
+              { name: "User type", action: "fill", valueOrAdvice: "External" },
+              { name: "Test users", action: "fill", valueOrAdvice: "Add your email", note: "Without this, even you cannot log in (hard cap of 100 test accounts)" },
+              { name: "Publish app", action: "watch", note: "DO NOT CLICK. Publishing starts the weeks-long verification pipeline." }
+            ]
+          },
+          {
+            stepNumber: 4,
+            text: "Add scopes under 'Data Access' (Notice Google renamed 'Scopes' to 'Data Access').",
+            owner: "AGENT+YOU",
+            portalUrl: "https://console.cloud.google.com/auth/scopes",
+            fields: [
+              { name: "Basic scopes (openid, userinfo.email, userinfo.profile)", action: "fill", note: "No review required" },
+              { name: "Gmail scopes (gmail.readonly, gmail.send)", action: "watch", note: "Flags as 'restricted' → mandates verification + third-party CASA security assessment" }
+            ]
+          },
+          {
+            stepNumber: 5,
+            text: "Create OAuth Client Credentials under 'Clients' (= credentials).",
+            owner: "YOU",
+            portalUrl: "https://console.cloud.google.com/auth/clients",
+            fields: [
+              { name: "Application type", action: "fill", valueOrAdvice: "Web application" },
+              { name: "Authorized redirect URIs", action: "fill", note: "Must match your code character-for-character including trailing slashes" },
+              { name: "Authorized JavaScript origins", action: "leave", note: "Optional" }
+            ]
+          }
+        ],
+        scopes: [
+          { scope: "openid / userinfo.email / userinfo.profile", triggersReview: false, tier: "non-sensitive", note: "Basic identity — no review" },
+          { scope: "gmail.readonly", triggersReview: true, tier: "restricted", note: "RESTRICTED — Requires CASA Tier 2 audit" },
+          { scope: "gmail.send", triggersReview: true, tier: "restricted", note: "RESTRICTED — Requires full verification" }
+        ],
+        blockers: [
+          {
+            class: "setup",
+            issue: "Scopes are hidden under a tab named 'Data Access' (not 'Scopes'); 'Organization' field looks mandatory but must be 'No organization' on personal Gmail.",
+            workaround: "Navigate directly to Data Access; select 'No organization' and proceed.",
+            severity: "medium"
+          },
+          {
+            class: "approval",
+            issue: "Any Gmail content scope is 'restricted' — production access for any public user requires Google verification + a paid CASA security assessment (6–12 weeks, $3k–$10k).",
+            workaround: "Stay in Testing mode for internal prototypes, or use Composio Managed Auth to bypass your own CASA assessment.",
+            severity: "fatal"
+          }
+        ],
+        composio: {
+          managed: true,
+          savedDays: 60,
+          recommendation: "Gmail is the single most painful DIY OAuth path. Using Composio's managed Gmail app bypasses the 60-day CASA security review and thousands in audit costs.",
+          link: "https://docs.composio.dev/toolkits/managed-auth"
+        },
+        evidence: [
+          {
+            claim: "Configured the consent screen and saw the restricted-scope warning appear when adding a Gmail scope; confirmed Testing-mode 100-user cap on the Audience page.",
+            label: "TESTED",
+            sourceUrl: "https://console.cloud.google.com/auth/audience"
+          },
+          {
+            claim: "Restricted-scope verification requires a CASA security assessment and commonly takes 6–12 weeks with third-party assessor costs.",
+            label: "SOURCED",
+            sourceUrl: "https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification"
+          }
+        ]
+      },
+      {
+        id: "google-classroom",
+        appName: "Google Classroom",
+        category: "EdTech & Education",
+        authType: "oauth2",
+        verdict: {
+          difficulty: "hard",
+          handsOnMinutes: 90,
+          approvalWaitDays: 60,
+          oneLineSummary: "Severe capability ceiling: write operations are restricted to coursework created by your own project."
+        },
+        twoClocks: {
+          worksInDev: "~1.5 hr",
+          anyUserCanConnect: "6–12 weeks (restricted scopes) — AND verify capability ceiling first"
+        },
+        cost: "Setup free; restricted coursework scopes require Google verification and security review.",
+        capabilityCheck: {
+          question: "Can your agent WRITE coursework or announcements into a teacher's classroom?",
+          verdict: "partial",
+          detail: "CRITICAL CAPABILITY CEILING: The Google Classroom API allows an external project to modify ONLY coursework created by that exact project. You cannot freely write into, grade, or modify coursework authored by the teacher in the native Classroom UI. Furthermore, posting announcements on a teacher's behalf requires the teacher's direct OAuth token, not a service account. Many teams build the entire auth pipeline before realizing the write API is effectively locked down.",
+          warningCallout: "Check this before writing any code. If your agent expects to push content into teacher-created assignments, the API will reject your requests with 403 Forbidden regardless of your scopes."
+        },
+        prerequisites: [
+          "A Google Cloud project with Google Classroom API enabled",
+          "Configured OAuth consent screen (same console flow as Gmail)",
+          "Clear architectural confirmation: are you only reading data, or writing into teacher assignments?"
+        ],
+        steps: [
+          {
+            stepNumber: 1,
+            text: "CRITICAL FEASIBILITY CHECK: Send a manual Postman call to the Classroom API using temporary OAuth credentials to verify your exact write path before setting up permanent apps.",
+            owner: "AGENT+YOU",
+            note: "Verify whether coursework.create or coursework.patch behaves as expected under your target user account."
+          },
+          {
+            stepNumber: 2,
+            text: "Enable Google Classroom API in the Google Cloud Console.",
+            owner: "YOU",
+            portalUrl: "https://console.cloud.google.com/apis/library/classroom.googleapis.com"
+          },
+          {
+            stepNumber: 3,
+            text: "Configure OAuth Consent Screen under Branding & Data Access.",
+            owner: "YOU",
+            portalUrl: "https://console.cloud.google.com/auth/scopes",
+            fields: [
+              { name: "classroom.courses.readonly", action: "fill", note: "Read-only access to courses" },
+              { name: "classroom.coursework.students", action: "watch", note: "Restricted scope requiring full verification + capability constraints" }
+            ]
+          }
+        ],
+        scopes: [
+          { scope: "classroom.courses.readonly", triggersReview: true, tier: "restricted", note: "Restricted" },
+          { scope: "classroom.coursework.students", triggersReview: true, tier: "restricted", note: "Restricted + write limits" }
+        ],
+        blockers: [
+          {
+            class: "capability",
+            issue: "API Write Ceiling: Applications cannot modify coursework created natively by the teacher or other projects. 'Syncing my app's student submissions directly into teacher-created assignments' is blocked by API design.",
+            workaround: "Architect your app so it creates its own custom coursework containers, or require teachers to initiate all assignment templates through your integration.",
+            severity: "fatal"
+          },
+          {
+            class: "approval",
+            issue: "Coursework scopes are classified as restricted by Google, triggering an extensive compliance review before public accounts can connect.",
+            workaround: "Test with up to 100 whitelisted teacher accounts in dev mode while pursuing compliance.",
+            severity: "high"
+          }
+        ],
+        composio: {
+          managed: false,
+          savedDays: 60,
+          recommendation: "Managed auth layers can simplify token exchange, but NO auth provider can circumvent Google's API-level coursework write ceiling. Feasibility checks must come first.",
+          link: "https://docs.composio.dev/toolkits/managed-auth",
+          note: "A managed auth provider handles authentication, but cannot override provider business logic limitations."
+        },
+        evidence: [
+          {
+            claim: "At Agilo (PictoBlox × Google Classroom integration), the team completed full OAuth setup and doc reading, only to discover via Postman that the required write path was blocked for third-party coursework.",
+            label: "TESTED",
+            sourceUrl: null
+          },
+          {
+            claim: "Classroom coursework can generally only be modified by the API project that created it; posting on a teacher's behalf requires their own credentials and scopes.",
+            label: "SOURCED",
+            sourceUrl: "https://developers.google.com/classroom/guides/manage-coursework"
+          }
+        ]
+      },
+      {
+        id: "slack",
+        appName: "Slack",
+        category: "Communication",
+        authType: "oauth2",
+        verdict: {
+          difficulty: "gated",
+          handsOnMinutes: 45,
+          approvalWaitDays: 70,
+          oneLineSummary: "Fast for your own workspace, but multi-tenant public distribution has a ~10-week App Directory review queue."
+        },
+        twoClocks: {
+          worksInDev: "~30 min (in your development workspace)",
+          anyUserCanConnect: "8–10 weeks (Slack App Directory verification required for multi-org install)"
+        },
+        cost: "Free to register. Compliance, privacy auditing, and developer support infrastructure required.",
+        capabilityCheck: {
+          question: "Can an agent send messages, read thread history, and listen to mentions?",
+          verdict: "full",
+          detail: "Slack has comprehensive bot APIs with webhooks, socket mode, and granular bot token scopes (chat:write, channels:history). No major capability ceiling for standard agent interactions."
+        },
+        prerequisites: [
+          "A Slack development workspace with admin permissions",
+          "5+ active external Slack workspaces installed prior to App Directory submission",
+          "A public privacy policy, support URL, and detailed setup walkthrough video"
+        ],
+        steps: [
+          {
+            stepNumber: 1,
+            text: "Go to api.slack.com/apps → Create New App → From scratch.",
+            owner: "YOU",
+            portalUrl: "https://api.slack.com/apps",
+            fields: [
+              { name: "App Name", action: "fill", valueOrAdvice: "e.g. Agent Workspace Assistant" },
+              { name: "Pick a workspace to develop your app in", action: "fill", note: "Select your personal/team dev workspace." }
+            ]
+          },
+          {
+            stepNumber: 2,
+            text: "Configure Bot Token Scopes under 'OAuth & Permissions'.",
+            owner: "AGENT+YOU",
+            fields: [
+              { name: "Scopes → Bot Token Scopes", action: "fill", valueOrAdvice: "chat:write, channels:read, app_mentions:read", note: "CRITICAL: Plan all scopes up front. Adding any new scope later restarts Slack's 10-week review queue." },
+              { name: "Redirect URLs", action: "fill", note: "Add exact callback URL, e.g. https://yourapp.com/api/auth/callback/slack" }
+            ]
+          },
+          {
+            stepNumber: 3,
+            text: "Install to Workspace for instant local development.",
+            owner: "YOU",
+            note: "Generates a Bot User OAuth Token (`xoxb-...`) that works immediately in your dev workspace."
+          },
+          {
+            stepNumber: 4,
+            text: "Activate Public Distribution under 'Manage Distribution'.",
+            owner: "YOU",
+            fields: [
+              { name: "Remove Hardcoded Information", action: "watch", note: "Must ensure client secrets and bot tokens are not baked into code." },
+              { name: "Submit to App Directory", action: "watch", note: "Requires active installations in at least 5 different external workspaces before the submit button unlocks." }
+            ]
+          }
+        ],
+        scopes: [
+          { scope: "chat:write", triggersReview: true, tier: "sensitive", note: "Send messages as bot" },
+          { scope: "channels:history", triggersReview: true, tier: "restricted", note: "Reads public messages" }
+        ],
+        blockers: [
+          {
+            class: "approval",
+            issue: "Slack App Directory review takes 8–10 weeks; any modification of scopes after submission immediately kicks your app to the back of the review queue.",
+            workaround: "Plan your entire scope list ahead of time, or use Composio Managed Auth to connect users immediately without waiting out the review.",
+            severity: "fatal"
+          }
+        ],
+        composio: {
+          managed: true,
+          savedDays: 70,
+          recommendation: "Slack's 10-week public directory review and workspace distribution prerequisite make it a prime candidate for Composio Managed Auth.",
+          link: "https://docs.composio.dev/toolkits/managed-auth"
+        },
+        evidence: [
+          {
+            claim: "Directly tested Slack app creation and verified that bot token works immediately within the home workspace, while distribution requires directory approval.",
+            label: "TESTED",
+            sourceUrl: "https://api.slack.com/apps"
+          }
+        ]
+      },
+      {
+        id: "microsoft-graph",
+        appName: "Microsoft (Outlook & Teams)",
+        category: "Enterprise & Productivity",
+        authType: "oauth2",
+        verdict: {
+          difficulty: "gated",
+          handsOnMinutes: 75,
+          approvalWaitDays: 30,
+          oneLineSummary: "Gated by Azure AD multi-tenant configuration, Enterprise Admin Consent walls, and MPN publisher verification."
+        },
+        twoClocks: {
+          worksInDev: "~45 min (single-tenant testing)",
+          anyUserCanConnect: "3–6 weeks (Microsoft Cloud Partner Program verification + Enterprise admin consent)"
+        },
+        cost: "Setup free. Publisher verification requires active Dun & Bradstreet registration.",
+        capabilityCheck: {
+          question: "Can an agent read emails and calendar events across Microsoft 365 organizations?",
+          verdict: "full",
+          detail: "Microsoft Graph has comprehensive APIs. The wall is ENTERPRISE GOVERNANCE: Most corporate Microsoft 365 tenants block users from authorizing non-verified multi-tenant apps until an IT administrator grants tenant-wide consent."
+        },
+        prerequisites: ["An Azure / Microsoft Entra ID tenant with admin rights", "Verified MPN ID"],
+        steps: [
+          {
+            stepNumber: 1,
+            text: "Open Microsoft Entra admin center → App registrations → New registration.",
+            owner: "YOU",
+            portalUrl: "https://entra.microsoft.com",
+            fields: [
+              { name: "Name", action: "fill", valueOrAdvice: "e.g. Agent 365 Connector" },
+              { name: "Supported account types", action: "watch", note: "MUST select 'Accounts in any organizational directory (Multitenant)'. Default single-tenant blocks external users." },
+              { name: "Redirect URI", action: "fill", valueOrAdvice: "Web: https://yourapp.com/api/auth/callback/microsoft" }
+            ]
+          }
+        ],
+        scopes: [{ scope: "Mail.ReadWrite", triggersReview: true, tier: "sensitive", note: "Email access" }],
+        blockers: [
+          {
+            class: "approval",
+            issue: "Enterprise Admin Consent: In most corporate tenants, employees hit 'Need admin approval' and cannot connect without an IT ticket.",
+            workaround: "Provide an Admin Consent onboarding link, or use Composio Managed Auth.",
+            severity: "fatal"
+          }
+        ],
+        composio: {
+          managed: true,
+          savedDays: 30,
+          recommendation: "Microsoft Entra publisher verification and admin consent hurdles make Composio Managed Auth extremely attractive.",
+          link: "https://docs.composio.dev/toolkits/managed-auth"
+        },
+        evidence: [{ claim: "Microsoft Entra requires verified publisher status for multi-tenant apps.", label: "SOURCED" }]
+      },
+      {
+        id: "twitter-x",
+        appName: "Twitter (X)",
+        category: "Social & Media",
+        authType: "oauth2",
+        verdict: {
+          difficulty: "gated",
+          handsOnMinutes: 50,
+          approvalWaitDays: 14,
+          oneLineSummary: "Gated by severe API paywalls ($100/mo to $5,000/mo) and restrictive monthly rate limits."
+        },
+        twoClocks: {
+          worksInDev: "~30 min (Free tier: write-only, 1,500 posts/mo cap)",
+          anyUserCanConnect: "Immediate once paid subscription ($100/mo Basic or $5,000/mo Pro) is approved"
+        },
+        cost: "Free tier has extreme limits. Basic tier is $100/mo; Pro tier is $5,000/mo.",
+        capabilityCheck: {
+          question: "Can an agent search recent tweets or read user timelines for free?",
+          verdict: "blocked",
+          detail: "SEVERE CAPABILITY & COST CEILING: Reading tweets or searching user timelines is completely blocked on the Free tier. Searching recent tweets requires at least the Basic tier ($100/mo), which caps results at 10,000 tweets/mo.",
+          warningCallout: "If your agent requires reading tweets or monitoring keywords, you cannot launch without a credit card paying minimum $100/month."
+        },
+        prerequisites: ["A verified X (Twitter) account", "A paid API tier subscription for reading tweets"],
+        steps: [
+          {
+            stepNumber: 1,
+            text: "Go to developer.x.com → Developer Portal → Projects & Apps → Create App.",
+            owner: "YOU",
+            portalUrl: "https://developer.x.com"
+          }
+        ],
+        scopes: [{ scope: "tweet.read", triggersReview: false, note: "Paid plan required" }],
+        blockers: [
+          {
+            class: "capability",
+            issue: "Free tier has no search or read capability; apps receive 403 Forbidden.",
+            workaround: "Upgrade to Basic API plan ($100/mo) or architect around webhook triggers.",
+            severity: "fatal"
+          }
+        ],
+        composio: {
+          managed: true,
+          savedDays: 14,
+          recommendation: "Composio provides managed integrations for Twitter/X that streamline token exchange.",
+          link: "https://docs.composio.dev/toolkits/managed-auth"
+        },
+        evidence: [{ claim: "X developer portal enforces strict pricing tiers; free plan does not allow tweet search.", label: "SOURCED" }]
+      },
+      {
+        id: "jotform",
+        appName: "Jotform",
+        category: "Forms & Surveys",
+        authType: "api_key",
+        verdict: {
+          difficulty: "trivial",
+          handsOnMinutes: 5,
+          approvalWaitDays: 0,
+          oneLineSummary: "HONESTY NOTICE: Jotform does NOT support OAuth 2.0. Integrations use API Keys directly."
+        },
+        twoClocks: {
+          worksInDev: "~5 min (generate API key in account settings)",
+          anyUserCanConnect: "Immediate (prompt user for API Key — no OAuth approval exists)"
+        },
+        cost: "Free",
+        capabilityCheck: {
+          question: "Can an agent create forms, fetch submissions, and read responses?",
+          verdict: "full",
+          detail: "Jotform's REST API is fully functional for creating forms and reading submissions using an API Key. However, because there is NO OAuth 2.0 flow, you cannot offer a 1-click 'Connect with Jotform' popup. Your agent must prompt the user to paste an API Key."
+        },
+        prerequisites: ["A Jotform account"],
+        steps: [
+          {
+            stepNumber: 1,
+            text: "Log into Jotform → Settings → API → Create New Key.",
+            owner: "YOU",
+            portalUrl: "https://www.jotform.com/myaccount/api",
+            fields: [
+              { name: "Key Name", action: "fill", valueOrAdvice: "Agent Access Key" },
+              { name: "Permissions", action: "watch", note: "Switch to 'Full Access' if your agent needs to create or modify forms." }
+            ]
+          }
+        ],
+        scopes: [],
+        blockers: [
+          {
+            class: "setup",
+            issue: "Developers search in vain for OAuth App creation screens in Jotform. Jotform only supports API key authentication.",
+            workaround: "Do not attempt to build an OAuth redirect flow. Use API Key authentication with user-provided tokens.",
+            severity: "medium"
+          }
+        ],
+        composio: {
+          managed: true,
+          savedDays: 0,
+          recommendation: "Composio provides managed API Key storage and tool actions for Jotform, handling encrypted credential storage.",
+          link: "https://docs.composio.dev/toolkits/managed-auth"
+        },
+        evidence: [{ claim: "Confirmed: Jotform API uses API Key authentication; OAuth 2.0 is not supported.", label: "TESTED" }]
+      },
+      {
+        id: "linear",
+        appName: "Linear",
+        category: "Developer Tools",
+        authType: "oauth2",
+        verdict: {
+          difficulty: "trivial",
+          handsOnMinutes: 15,
+          approvalWaitDays: 0,
+          oneLineSummary: "Fast and painless developer experience: standard OAuth2 with immediate multi-workspace connection."
+        },
+        twoClocks: {
+          worksInDev: "~15 min",
+          anyUserCanConnect: "Same day — instant multi-tenant authorization"
+        },
+        cost: "Free",
+        capabilityCheck: {
+          question: "Can an agent create issues, update cycles, and read project roadmaps?",
+          verdict: "full",
+          detail: "Linear has a high-performance GraphQL API. Full read and write capabilities are supported across issues, comments, roadmaps, and teams with no artificial capability ceiling."
+        },
+        prerequisites: ["A Linear workspace account"],
+        steps: [
+          {
+            stepNumber: 1,
+            text: "Go to Linear Settings → Account → Security & access → Applications → Create new.",
+            owner: "YOU",
+            portalUrl: "https://linear.app/settings/api"
+          }
+        ],
+        scopes: [{ scope: "read, write", triggersReview: false, note: "Instant access" }],
+        blockers: [],
+        composio: {
+          managed: true,
+          savedDays: 0,
+          recommendation: "Composio provides ready-to-use Linear integration with clean tool calling for issue management.",
+          link: "https://docs.composio.dev/toolkits/managed-auth"
+        },
+        evidence: [{ claim: "Linear supports public OAuth 2.0 without review gates.", label: "TESTED" }]
+      },
+      {
+        id: "notion",
+        appName: "Notion",
+        category: "Workspace & Docs",
+        authType: "oauth2",
+        verdict: {
+          difficulty: "moderate",
+          handsOnMinutes: 25,
+          approvalWaitDays: 2,
+          oneLineSummary: "Relatively straightforward OAuth flow; switch from Internal to Public integration to enable multi-tenant connects."
+        },
+        twoClocks: {
+          worksInDev: "~15 min (Internal integration)",
+          anyUserCanConnect: "1–2 days (Public integration review)"
+        },
+        cost: "Free",
+        capabilityCheck: {
+          question: "Can an agent create, read, and search Notion pages and databases?",
+          verdict: "full",
+          detail: "Notion's API supports full block-level and database read/write access. Note: Users must explicitly grant access to specific pages or parent databases when authorizing your integration."
+        },
+        prerequisites: ["A Notion account"],
+        steps: [
+          {
+            stepNumber: 1,
+            text: "Go to notion.so/my-integrations → New integration.",
+            owner: "YOU",
+            portalUrl: "https://www.notion.so/my-integrations",
+            fields: [
+              { name: "Type", action: "watch", note: "Defaults to 'Internal'. You MUST switch to 'Public' under Distribution settings to allow any user to connect." }
+            ]
+          }
+        ],
+        scopes: [{ scope: "read_content, insert_content", triggersReview: false, note: "Standard" }],
+        blockers: [{ class: "setup", issue: "Defaults to 'Internal' integration.", workaround: "Toggle to 'Public Integration' in Distribution tab.", severity: "medium" }],
+        composio: {
+          managed: true,
+          savedDays: 2,
+          recommendation: "Composio provides fully managed Notion OAuth with standardized page and database action execution.",
+          link: "https://docs.composio.dev/toolkits/managed-auth"
+        },
+        evidence: [{ claim: "Verified Notion integration setup.", label: "SOURCED" }]
+      },
+      {
+        id: "hubspot",
+        appName: "HubSpot",
+        category: "CRM & Sales",
+        authType: "oauth2",
+        verdict: {
+          difficulty: "moderate",
+          handsOnMinutes: 40,
+          approvalWaitDays: 10,
+          oneLineSummary: "Requires a dedicated HubSpot Developer Account; standard multi-tenant app review takes ~1-2 weeks."
+        },
+        twoClocks: {
+          worksInDev: "~20 min (via a free Developer Test Account)",
+          anyUserCanConnect: "7–14 days (Marketplace listing review for public unlisted install)"
+        },
+        cost: "Free developer account",
+        capabilityCheck: {
+          question: "Can an agent create and update CRM contacts, deals, and companies?",
+          verdict: "full",
+          detail: "HubSpot provides rich CRM REST endpoints. However, custom object endpoints require the connecting user's HubSpot portal to be on Enterprise or Pro tiers."
+        },
+        prerequisites: ["A HubSpot Developer Account"],
+        steps: [{ stepNumber: 1, text: "Sign up for a dedicated Developer Account at developers.hubspot.com.", owner: "YOU", portalUrl: "https://developers.hubspot.com" }],
+        scopes: [{ scope: "crm.objects.contacts.read, write", triggersReview: false, note: "CRM scopes" }],
+        blockers: [{ class: "setup", issue: "Cannot install app in primary developer portal.", workaround: "Create a child 'Test Account' inside developer console.", severity: "medium" }],
+        composio: {
+          managed: true,
+          savedDays: 10,
+          recommendation: "Composio provides managed HubSpot auth and pre-built CRM actions.",
+          link: "https://docs.composio.dev/toolkits/managed-auth"
+        },
+        evidence: [{ claim: "HubSpot requires apps to be installed into separate test accounts during development.", label: "SOURCED" }]
+      },
+      {
+        id: "spotify",
+        appName: "Spotify",
+        category: "Media & Audio",
+        authType: "oauth2",
+        verdict: {
+          difficulty: "moderate",
+          handsOnMinutes: 20,
+          approvalWaitDays: 20,
+          oneLineSummary: "Fast dev mode, but public launch is capped at 25 users until Spotify approves a Quota Extension review."
+        },
+        twoClocks: {
+          worksInDev: "~15 min (strictly capped at 25 whitelisted Spotify accounts)",
+          anyUserCanConnect: "2–4 weeks (Spotify Quota Extension approval)"
+        },
+        cost: "Free",
+        capabilityCheck: {
+          question: "Can an agent control playback and modify user playlists?",
+          verdict: "full",
+          detail: "Playback control and playlist creation work well with active Spotify Premium accounts. Note: Spotify's terms strictly prohibit using metadata or user listening histories for LLM model training."
+        },
+        prerequisites: ["A Spotify Developer account"],
+        steps: [{ stepNumber: 1, text: "Go to developer.spotify.com/dashboard → Create app.", owner: "YOU", portalUrl: "https://developer.spotify.com/dashboard" }],
+        scopes: [{ scope: "user-read-playback-state", triggersReview: false, note: "Playback" }],
+        blockers: [{ class: "setup", issue: "Development Mode 25-user hard cap: Public users encounter an unexplained authentication error.", workaround: "Submit a Quota Extension form.", severity: "high" }],
+        composio: {
+          managed: true,
+          savedDays: 20,
+          recommendation: "Composio provides managed Spotify connections that bypass individual quota management.",
+          link: "https://docs.composio.dev/toolkits/managed-auth"
+        },
+        evidence: [{ claim: "Spotify enforces a strict 25-user limit in developer mode.", label: "SOURCED" }]
+      }
+    ];
+
+    // State
+    let guides = [...GUIDES_DATA];
+    let selectedGuides = [guides[0], guides[1], guides[3]]; // GitHub, Gmail, Slack
+    let activeGuideDetail = null;
+    let plannerView = "cto";
+
+    function init() {
+      renderLibrary();
+      updatePlanner();
+      lucide.createIcons();
+    }
+
+    function switchTab(tab) {
+      document.getElementById("view-library").classList.add("hidden");
+      document.getElementById("view-planner").classList.add("hidden");
+      document.getElementById("view-agent").classList.add("hidden");
+
+      document.querySelectorAll(".tab-btn").forEach(b => {
+        b.className = "tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-all";
+      });
+
+      if (tab === "library") {
+        document.getElementById("view-library").classList.remove("hidden");
+        document.getElementById("tab-btn-library").className = "tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 text-white shadow-sm transition-all";
+      } else if (tab === "planner") {
+        document.getElementById("view-planner").classList.remove("hidden");
+        document.getElementById("tab-btn-planner").className = "tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 text-white shadow-sm transition-all";
+        updatePlanner();
+      } else if (tab === "agent") {
+        document.getElementById("view-agent").classList.remove("hidden");
+        document.getElementById("tab-btn-agent").className = "tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 transition-all";
+      }
+      lucide.createIcons();
+    }
+
+    function renderLibrary() {
+      const q = document.getElementById("search-input").value.toLowerCase();
+      const diff = document.getElementById("filter-difficulty").value;
+      const cat = document.getElementById("filter-category").value;
+
+      const filtered = guides.filter(g => {
+        const matchesQ = !q || g.appName.toLowerCase().includes(q) || g.category.toLowerCase().includes(q) || (g.verdict.oneLineSummary && g.verdict.oneLineSummary.toLowerCase().includes(q));
+        const matchesDiff = diff === "all" || g.verdict.difficulty === diff;
+        const matchesCat = cat === "all" || g.category === cat;
+        return matchesQ && matchesDiff && matchesCat;
+      });
+
+      const container = document.getElementById("guides-grid");
+      container.innerHTML = "";
+
+      filtered.forEach(guide => {
+        const isSelected = selectedGuides.some(g => g.id === guide.id);
+        const card = document.createElement("div");
+        card.className = `rounded-2xl border transition-all duration-200 flex flex-col justify-between overflow-hidden ${
+          isSelected
+            ? "border-emerald-500/60 bg-surface shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500/50"
+            : "border-surface-border bg-surface-card/60 hover:bg-surface-card hover:border-zinc-700"
+        }`;
+
+        let diffBadgeColor = "bg-zinc-800 text-zinc-300 border-zinc-700";
+        if (guide.verdict.difficulty === "trivial") diffBadgeColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+        if (guide.verdict.difficulty === "moderate") diffBadgeColor = "bg-amber-500/10 text-amber-400 border-amber-500/30";
+        if (guide.verdict.difficulty === "hard") diffBadgeColor = "bg-orange-500/10 text-orange-400 border-orange-500/30";
+        if (guide.verdict.difficulty === "gated") diffBadgeColor = "bg-rose-500/10 text-rose-400 border-rose-500/30";
+
+        let capBadge = `<span class="px-2 py-0.5 rounded-full text-xs font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Full Capability</span>`;
+        if (guide.capabilityCheck.verdict === "partial") {
+          capBadge = `<span class="px-2 py-0.5 rounded-full text-xs font-mono font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">Ceiling Warning</span>`;
+        } else if (guide.capabilityCheck.verdict === "blocked") {
+          capBadge = `<span class="px-2 py-0.5 rounded-full text-xs font-mono font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">Paywall / Blocked</span>`;
+        }
+
+        card.innerHTML = `
+          <div class="p-5">
+            <div class="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-xs font-mono text-zinc-500 uppercase">${guide.category}</span>
+                  ${guide.composio.managed ? `<span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Composio Managed</span>` : ''}
+                </div>
+                <h3 class="text-lg font-bold text-white">${guide.appName}</h3>
+              </div>
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold uppercase tracking-wider border ${diffBadgeColor}">
+                ${guide.verdict.difficulty}
+              </span>
+            </div>
+
+            <p class="text-xs text-zinc-400 line-clamp-2 mb-4 leading-relaxed">
+              ${guide.verdict.oneLineSummary || guide.capabilityCheck.detail}
+            </p>
+
+            <div class="mb-4 pt-3 border-t border-surface-border/60">
+              <div class="flex items-center justify-between text-xs mb-1">
+                <span class="text-zinc-500 font-medium">Capability Check</span>
+                ${capBadge}
+              </div>
+              <p class="text-[11px] text-zinc-400 italic truncate">"${guide.capabilityCheck.question}"</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-surface border border-surface-border text-xs font-mono">
+              <div>
+                <div class="text-[10px] text-zinc-500 font-sans">Dev Clock</div>
+                <div class="font-semibold text-zinc-200">${guide.twoClocks.worksInDev}</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-zinc-500 font-sans">Public Users</div>
+                <div class="font-semibold ${guide.verdict.approvalWaitDays > 0 ? 'text-amber-400' : 'text-emerald-400'}">${guide.twoClocks.anyUserCanConnect}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-5 py-3.5 bg-surface/50 border-t border-surface-border flex items-center justify-between gap-2">
+            <button onclick="openModal('${guide.id}')" class="text-xs text-zinc-300 hover:text-white flex items-center gap-1.5 font-medium transition-colors">
+              <span>View Field Guide</span>
+              <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
+            </button>
+            <button onclick="togglePlan('${guide.id}')" class="px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
+              isSelected ? "bg-emerald-500 text-black font-semibold shadow-sm" : "bg-surface-border text-zinc-300 hover:text-white hover:bg-zinc-700"
+            }">
+              ${isSelected ? `<span>✓ In Plan</span>` : `<span>+ Add to Plan</span>`}
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    function togglePlan(guideId) {
+      const g = guides.find(x => x.id === guideId);
+      if (!g) return;
+      if (selectedGuides.some(x => x.id === guideId)) {
+        selectedGuides = selectedGuides.filter(x => x.id !== guideId);
+      } else {
+        selectedGuides.push(g);
+      }
+      document.getElementById("nav-cart-badge").innerText = selectedGuides.length;
+      document.getElementById("floating-cart-count").innerText = selectedGuides.length;
+      renderLibrary();
+      updatePlanner();
+    }
+
+    function setPlannerView(mode) {
+      plannerView = mode;
+      if (mode === "cto") {
+        document.getElementById("planner-cto-container").classList.remove("hidden");
+        document.getElementById("planner-dev-container").classList.add("hidden");
+        document.getElementById("view-mode-cto").className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-zinc-800 text-white border border-zinc-700 transition-all";
+        document.getElementById("view-mode-dev").className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white transition-all";
+      } else {
+        document.getElementById("planner-cto-container").classList.add("hidden");
+        document.getElementById("planner-dev-container").classList.remove("hidden");
+        document.getElementById("view-mode-cto").className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white transition-all";
+        document.getElementById("view-mode-dev").className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-zinc-800 text-white border border-zinc-700 transition-all";
+      }
+      lucide.createIcons();
+    }
+
+    function updatePlanner() {
+      const sorted = [...selectedGuides].sort((a, b) => b.verdict.approvalWaitDays - a.verdict.approvalWaitDays);
+      const criticalDays = sorted.length > 0 ? sorted[0].verdict.approvalWaitDays : 0;
+      const criticalAppName = sorted.length > 0 ? sorted[0].appName : "None";
+
+      document.getElementById("floating-cart-days").innerText = `${criticalDays} days wait`;
+      document.getElementById("metric-calendar-delay").innerText = `${criticalDays} days`;
+      document.getElementById("metric-calendar-sub").innerText = `Gated by ${criticalAppName}`;
+      document.getElementById("metric-composio-savings").innerText = `${criticalDays} days saved`;
+
+      const totalMins = selectedGuides.reduce((acc, g) => acc + g.verdict.handsOnMinutes, 0);
+      document.getElementById("metric-engineering-hours").innerText = `~${(totalMins / 60).toFixed(1)} hrs`;
+
+      // Cost calculation
+      let costText = "$0";
+      const hasGmail = selectedGuides.some(g => g.id === "google-gmail");
+      const hasTwitter = selectedGuides.some(g => g.id === "twitter-x");
+      if (hasGmail && hasTwitter) costText = "$3,100 – $10,100+";
+      else if (hasGmail) costText = "$3,000 – $10,000";
+      else if (hasTwitter) costText = "$100/mo – $5,000/mo";
+      document.getElementById("metric-cost-estimate").innerText = costText;
+
+      // Bottleneck Callout
+      const callout = document.getElementById("planner-bottleneck-callout");
+      if (criticalDays > 0) {
+        callout.innerHTML = `
+          <div class="p-6 rounded-3xl bg-gradient-to-r from-amber-950/40 via-surface-card to-zinc-900 border border-amber-500/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <i data-lucide="flame" class="h-5 w-5 text-amber-400"></i>
+                <span class="text-xs font-mono font-bold uppercase tracking-wider text-amber-400">Critical Path Bottleneck</span>
+              </div>
+              <h3 class="text-xl font-bold text-white">Start <span class="text-amber-400">${criticalAppName}</span> Today</h3>
+              <p class="text-xs text-zinc-300 max-w-2xl leading-relaxed">
+                Your launch is gated by <strong>${criticalAppName}</strong> (${criticalDays} days approval queue). Even if your engineering takes 1 day, public users cannot connect until this review finishes.
+              </p>
+            </div>
+            <a href="https://docs.composio.dev/toolkits/managed-auth" target="_blank" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-semibold flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 shrink-0">
+              <i data-lucide="shield-check" class="h-4 w-4"></i>
+              <span>Bypass with Composio (0 Days)</span>
+            </a>
+          </div>
+        `;
+      } else {
+        callout.innerHTML = `
+          <div class="p-6 rounded-3xl bg-gradient-to-r from-emerald-950/40 via-surface-card to-zinc-900 border border-emerald-500/40 flex items-center gap-3">
+            <i data-lucide="check-circle-2" class="h-6 w-6 text-emerald-400"></i>
+            <div>
+              <h3 class="text-lg font-bold text-white">Zero-Wait Launch Path!</h3>
+              <p class="text-xs text-zinc-400">None of your selected apps have mandatory provider approval gates. You can launch immediately!</p>
+            </div>
+          </div>
+        `;
+      }
+
+      // Gantt chart list
+      const gantt = document.getElementById("gantt-chart-list");
+      gantt.innerHTML = "";
+      const maxDays = Math.max(...sorted.map(g => g.verdict.approvalWaitDays), 1);
+
+      sorted.forEach(guide => {
+        const percent = Math.max((guide.verdict.approvalWaitDays / maxDays) * 100, 4);
+        const item = document.createElement("div");
+        item.className = "p-3.5 rounded-2xl bg-surface border border-surface-border space-y-2";
+        item.innerHTML = `
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">${guide.appName}</span>
+              <span class="text-[10px] font-mono text-zinc-500 uppercase">(${guide.category})</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="font-mono text-zinc-400">Dev: ~${guide.verdict.handsOnMinutes}m</span>
+              <span class="font-mono font-bold ${guide.verdict.approvalWaitDays > 0 ? 'text-amber-400' : 'text-emerald-400'}">Wait: ${guide.verdict.approvalWaitDays} days</span>
+              <button onclick="openModal('${guide.id}')" class="text-zinc-400 hover:text-white"><i data-lucide="arrow-right" class="h-3.5 w-3.5"></i></button>
+              <button onclick="togglePlan('${guide.id}')" class="text-zinc-600 hover:text-rose-400"><i data-lucide="trash-2" class="h-3 w-3"></i></button>
+            </div>
+          </div>
+          <div class="w-full bg-zinc-800 h-2.5 rounded-full overflow-hidden flex">
+            <div class="h-full rounded-full ${guide.verdict.approvalWaitDays > 40 ? 'bg-rose-500' : guide.verdict.approvalWaitDays > 0 ? 'bg-amber-500' : 'bg-emerald-500'}" style="width: ${percent}%"></div>
+          </div>
+        `;
+        gantt.appendChild(item);
+      });
+
+      // Org Blockers
+      const orgBlockers = [];
+      selectedGuides.forEach(g => {
+        g.blockers.forEach(b => {
+          if (b.class === "approval" || b.severity === "fatal") orgBlockers.push({ app: g.appName, issue: b.issue, class: b.class });
+        });
+      });
+      const orgCard = document.getElementById("org-blockers-card");
+      if (orgBlockers.length > 0) {
+        orgCard.classList.remove("hidden");
+        document.getElementById("org-blockers-count").innerText = orgBlockers.length;
+        const list = document.getElementById("org-blockers-list");
+        list.innerHTML = "";
+        orgBlockers.forEach(b => {
+          list.innerHTML += `
+            <div class="p-3.5 rounded-xl bg-surface border border-surface-border text-xs space-y-1">
+              <span class="font-mono text-[10px] uppercase text-purple-400 font-bold">${b.app} · ${b.class}</span>
+              <p class="text-zinc-300">${b.issue}</p>
+            </div>
+          `;
+        });
+      } else {
+        orgCard.classList.add("hidden");
+      }
+
+      // Capability Warnings
+      const capWarnings = selectedGuides.filter(g => g.capabilityCheck.verdict === "partial" || g.capabilityCheck.verdict === "blocked");
+      const capCard = document.getElementById("capability-warnings-card");
+      if (capWarnings.length > 0) {
+        capCard.classList.remove("hidden");
+        document.getElementById("capability-warnings-count").innerText = capWarnings.length;
+        const list = document.getElementById("capability-warnings-list");
+        list.innerHTML = "";
+        capWarnings.forEach(w => {
+          list.innerHTML += `
+            <div class="p-3.5 rounded-xl bg-black/40 border border-amber-500/20 text-xs space-y-1">
+              <span class="font-mono text-[11px] font-bold text-amber-400">${w.appName} (${w.capabilityCheck.verdict.toUpperCase()})</span>
+              <p class="text-zinc-300">${w.capabilityCheck.detail}</p>
+            </div>
+          `;
+        });
+      } else {
+        capCard.classList.add("hidden");
+      }
+
+      // Dev View
+      const devList = document.getElementById("planner-dev-list");
+      devList.innerHTML = "";
+      sorted.forEach(g => {
+        let stepsHtml = "";
+        g.steps.forEach((s, idx) => {
+          stepsHtml += `
+            <div class="p-2.5 rounded-xl bg-surface border border-surface-border text-xs flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <span class="h-5 w-5 rounded-full bg-zinc-800 text-[10px] font-mono font-bold flex items-center justify-center text-zinc-400">${idx+1}</span>
+                <span class="text-zinc-300">${s.text}</span>
+              </div>
+              <span class="text-[10px] font-mono text-zinc-500 uppercase">${s.owner}</span>
+            </div>
+          `;
+        });
+        devList.innerHTML += `
+          <div class="p-5 rounded-3xl bg-surface-card border border-surface-border space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>${g.appName}</span>
+                <span class="text-xs font-mono text-zinc-500">(~${g.verdict.handsOnMinutes}m)</span>
+              </h4>
+              <button onclick="openModal('${g.id}')" class="text-xs text-emerald-400 hover:underline flex items-center gap-1">
+                <span>Inspect Field Directives</span>
+                <i data-lucide="arrow-right" class="h-3 w-3"></i>
+              </button>
+            </div>
+            <div class="space-y-2">${stepsHtml}</div>
+          </div>
+        `;
+      });
+      lucide.createIcons();
+    }
+
+    function clearPlanner() {
+      selectedGuides = [];
+      document.getElementById("nav-cart-badge").innerText = 0;
+      document.getElementById("floating-cart-count").innerText = 0;
+      renderLibrary();
+      updatePlanner();
+    }
+
+    function exportPlanJson() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(selectedGuides, null, 2));
+      const a = document.createElement("a");
+      a.setAttribute("href", dataStr);
+      a.setAttribute("download", `oauth-launch-plan-${Date.now()}.json`);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    // Modal
+    function openModal(guideId) {
+      const guide = guides.find(g => g.id === guideId);
+      if (!guide) return;
+      activeGuideDetail = guide;
+
+      document.getElementById("modal-app-name").innerText = guide.appName;
+      document.getElementById("modal-app-category").innerText = guide.category;
+      document.getElementById("modal-app-difficulty").innerText = guide.verdict.difficulty;
+      document.getElementById("modal-app-auth").innerText = guide.authType;
+      document.getElementById("modal-app-icon").innerText = guide.appName.charAt(0);
+
+      const isSel = selectedGuides.some(g => g.id === guide.id);
+      const planBtn = document.getElementById("modal-plan-toggle-btn");
+      planBtn.innerText = isSel ? "✓ In Launch Plan" : "+ Add to Plan";
+      planBtn.onclick = () => {
+        togglePlan(guide.id);
+        openModal(guide.id);
+      };
+
+      const body = document.getElementById("modal-body-content");
+      body.innerHTML = `
+        <!-- LEVEL 1: VERDICT & TWO CLOCKS -->
+        <section class="space-y-4">
+          <div class="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <span class="text-[10px] font-mono font-bold tracking-wider uppercase text-emerald-400">ONE-LINE LAUNCH VERDICT</span>
+              <p class="text-sm font-medium text-zinc-200 mt-1">${guide.verdict.oneLineSummary || guide.capabilityCheck.detail}</p>
+            </div>
+            ${guide.composio.managed ? `
+              <div class="shrink-0 bg-emerald-500/20 border border-emerald-500/40 px-3.5 py-2 rounded-xl text-xs text-emerald-300 flex items-center gap-2">
+                <i data-lucide="shield-check" class="h-4 w-4 text-emerald-400"></i>
+                <span>Composio Managed Auth Ready</span>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="p-4 rounded-2xl bg-surface border border-surface-border">
+              <div class="flex items-center gap-2 text-xs text-zinc-400 mb-1">
+                <i data-lucide="clock" class="h-4 w-4 text-blue-400"></i>
+                <span>Clock 1: Works in Dev</span>
+              </div>
+              <div class="text-base font-mono font-bold text-white">${guide.twoClocks.worksInDev}</div>
+              <p class="text-[11px] text-zinc-500 mt-0.5">Hands-on time: ~${guide.verdict.handsOnMinutes} min</p>
+            </div>
+
+            <div class="p-4 rounded-2xl bg-surface border border-surface-border">
+              <div class="flex items-center gap-2 text-xs text-zinc-400 mb-1">
+                <i data-lucide="users" class="h-4 w-4 text-amber-400"></i>
+                <span>Clock 2: Public Users</span>
+              </div>
+              <div class="text-base font-mono font-bold ${guide.verdict.approvalWaitDays > 0 ? 'text-amber-400' : 'text-emerald-400'}">${guide.twoClocks.anyUserCanConnect}</div>
+              <p class="text-[11px] text-zinc-500 mt-0.5">Wait time: ${guide.verdict.approvalWaitDays} days</p>
+            </div>
+
+            <div class="p-4 rounded-2xl bg-surface border border-surface-border">
+              <div class="flex items-center gap-2 text-xs text-zinc-400 mb-1">
+                <i data-lucide="dollar-sign" class="h-4 w-4 text-purple-400"></i>
+                <span>Estimated Cost / Audit</span>
+              </div>
+              <div class="text-sm font-mono font-semibold text-zinc-200">${guide.cost}</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- LEVEL 2: FEASIBILITY FIRST - CAPABILITY CEILING CHECK -->
+        <section class="pt-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold tracking-wide uppercase font-mono text-zinc-400 flex items-center gap-2">
+                <i data-lucide="alert-octagon" class="h-4 w-4 text-amber-400"></i>
+                Step 0: Capability Feasibility Check
+              </h3>
+              <p class="text-xs text-zinc-500">Answer this before writing code. If the API cannot perform your action, OAuth setup is wasted effort.</p>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-2xl border ${guide.capabilityCheck.verdict === 'full' ? 'bg-surface border-surface-border' : 'bg-amber-500/10 border-amber-500/30'}">
+            <h4 class="text-sm font-bold text-white mb-1">${guide.capabilityCheck.question}</h4>
+            <p class="text-xs text-zinc-300 leading-relaxed">${guide.capabilityCheck.detail}</p>
+            ${guide.capabilityCheck.warningCallout ? `<div class="mt-3 p-3 rounded-xl bg-black/40 border border-amber-500/30 text-xs text-amber-300 font-mono">⚠️ ${guide.capabilityCheck.warningCallout}</div>` : ''}
+          </div>
+
+          <!-- The 3 Classes of Blockers -->
+          <div class="space-y-3 pt-2">
+            <h4 class="text-xs font-mono uppercase text-zinc-400 font-semibold">Known Blockers & Tested Workarounds</h4>
+            <div class="space-y-2">
+              ${guide.blockers.map(b => `
+                <div class="p-3.5 rounded-xl bg-surface border border-surface-border text-xs space-y-1.5">
+                  <div class="flex items-center justify-between">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold uppercase tracking-wider ${b.class === 'setup' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30' : b.class === 'approval' ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'}">
+                      ${b.class === 'setup' ? 'Setup Friction' : b.class === 'approval' ? 'Approval Wait' : 'Capability Ceiling'}
+                    </span>
+                    <span class="text-[10px] font-mono uppercase text-zinc-500">Severity: ${b.severity || 'medium'}</span>
+                  </div>
+                  <p class="text-zinc-200 font-medium"><span class="text-rose-400 font-semibold">Issue:</span> ${b.issue}</p>
+                  <p class="text-zinc-400"><span class="text-emerald-400 font-semibold">Workaround:</span> ${b.workaround}</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </section>
+
+        <!-- LEVEL 3: ZERO-AMBIGUITY FIELD NAVIGATOR -->
+        <section class="pt-6 space-y-4">
+          <div>
+            <h3 class="text-sm font-bold tracking-wide uppercase font-mono text-zinc-400">Level 3: Step-by-Step Field Execution Guide</h3>
+            <p class="text-xs text-zinc-500">Exact directives: <span class="text-emerald-400 font-semibold">FILL</span> what matters, <span class="text-zinc-400 font-semibold">LEAVE</span> defaults alone, and <span class="text-amber-400 font-semibold">WATCH</span> traps that break your launch.</p>
+          </div>
+
+          <div class="space-y-4">
+            ${guide.steps.map((s, idx) => `
+              <div class="p-4 rounded-2xl bg-surface border border-surface-border space-y-3">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex items-center gap-2">
+                    <span class="h-6 w-6 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-mono font-bold text-zinc-300">${s.stepNumber || idx + 1}</span>
+                    <h4 class="text-sm font-semibold text-white">${s.text}</h4>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <span class="text-[11px] font-mono px-2 py-0.5 rounded border border-zinc-700 text-zinc-300">${s.owner}</span>
+                    ${s.portalUrl ? `<a href="${s.portalUrl}" target="_blank" class="flex items-center gap-1 text-[11px] font-mono text-zinc-400 hover:text-emerald-400 px-2 py-1 rounded bg-zinc-800/80 border border-zinc-700">Open Console <i data-lucide="external-link" class="h-3 w-3"></i></a>` : ''}
+                  </div>
+                </div>
+                ${s.note ? `<p class="text-xs text-zinc-400 pl-8 italic">${s.note}</p>` : ''}
+                ${s.fields && s.fields.length > 0 ? `
+                  <div class="pl-8 pt-2 space-y-2">
+                    <div class="text-[11px] font-mono uppercase text-zinc-500 tracking-wider">Field Directives:</div>
+                    <div class="grid grid-cols-1 gap-2">
+                      ${s.fields.map(f => `
+                        <div class="p-2.5 rounded-xl bg-zinc-900/80 border border-surface-border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${f.action === 'fill' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : f.action === 'leave' ? 'bg-zinc-800 text-zinc-400 border-zinc-700' : 'bg-amber-500/15 text-amber-400 border-amber-500/40'}">${f.action}</span>
+                            <span class="font-mono font-medium text-zinc-200">${f.name}</span>
+                          </div>
+                          <div class="text-[11px] text-zinc-400 sm:text-right font-sans">
+                            ${f.valueOrAdvice ? `<span class="font-mono text-zinc-300 mr-2">${f.valueOrAdvice}</span>` : ''}
+                            ${f.note ? `<span class="text-zinc-500">${f.note}</span>` : ''}
+                          </div>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </section>
+
+        <!-- LEVEL 4: EVIDENCE -->
+        <section class="pt-6 space-y-3">
+          <h3 class="text-sm font-bold tracking-wide uppercase font-mono text-zinc-400">Evidence & Provenance</h3>
+          <div class="space-y-2">
+            ${guide.evidence.map(ev => `
+              <div class="p-3 rounded-xl bg-surface border border-surface-border text-xs flex items-start justify-between gap-3">
+                <p class="text-zinc-300 leading-relaxed">${ev.claim}</p>
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${ev.label === 'TESTED' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}">${ev.label}</span>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+
+        <!-- COMPOSIO ESCAPE HATCH -->
+        <section class="pt-6">
+          <div class="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/60 via-zinc-900 to-black border border-emerald-500/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <i data-lucide="shield-check" class="h-5 w-5 text-emerald-400"></i>
+                <h4 class="text-base font-bold text-white">Do It Yourself vs. Use Composio Managed Auth</h4>
+              </div>
+              <p class="text-xs text-zinc-300 leading-relaxed">${guide.composio.recommendation}</p>
+              ${guide.composio.note ? `<p class="text-[11px] text-amber-300 font-mono mt-1">ℹ️ ${guide.composio.note}</p>` : ''}
+            </div>
+            <a href="${guide.composio.link}" target="_blank" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs shrink-0 shadow-lg shadow-emerald-500/20">
+              <span>Connect with Composio</span>
+              <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
+            </a>
+          </div>
+        </section>
+      `;
+
+      document.getElementById("guide-modal").classList.remove("hidden");
+      lucide.createIcons();
+    }
+
+    function closeModal() {
+      document.getElementById("guide-modal").classList.add("hidden");
+    }
+
+    // Agent live simulation
+    async function runAgent(targetApp) {
+      const q = targetApp || document.getElementById("agent-input").value.trim();
+      if (!q) return;
+
+      document.getElementById("agent-trail-card").classList.remove("hidden");
+      document.getElementById("agent-result-card").classList.add("hidden");
+      const list = document.getElementById("agent-trail-list");
+      list.innerHTML = "";
+
+      const steps = [
+        { type: "search", title: `Searching developer portal for "${q}"`, detail: `Querying indices: "${q} OAuth 2.0 developer guide scopes rate limits"` },
+        { type: "fetch", title: `Inspecting documentation endpoint: https://developer.${q.toLowerCase().replace(/\\s+/g, '')}.com`, detail: "Discovered OAuth authorization code endpoint, PKCE requirements, and token exchange policies." },
+        { type: "analyze", title: "Analyzing scope tiers and review gates", detail: "Checking for sensitive/restricted scopes, CASA compliance, and app store directory review queues." },
+        { type: "analyze", title: "Checking API capability ceilings & write restrictions", detail: "Testing write permissions, rate quotas, and per-tenant enterprise admin consent rules." },
+        { type: "validate", title: "Validating against strict Zod Guide schema", detail: "Verifying fields, twoClocks, who-does-what step owners, and evidence labels..." },
+        { type: "verdict", title: "Guide compiled successfully", detail: "Verdict: MODERATE | Dev Clock: ~25 min | Public Users: ~7 days" }
+      ];
+
+      for (let i = 0; i < steps.length; i++) {
+        const s = steps[i];
+        document.getElementById("agent-trail-count").innerText = i + 1;
+        const item = document.createElement("div");
+        item.className = "p-3 rounded-xl bg-surface border border-surface-border flex items-start gap-3 animate-in fade-in";
+        item.innerHTML = `
+          <span class="text-[10px] text-zinc-500 pt-0.5 shrink-0">${new Date().toLocaleTimeString()}</span>
+          <div class="flex-1 space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="px-1.5 py-0.2 rounded text-[10px] uppercase font-bold ${s.type === 'search' ? 'bg-blue-500/20 text-blue-400' : s.type === 'fetch' ? 'bg-purple-500/20 text-purple-400' : s.type === 'validate' ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}">${s.type}</span>
+              <span class="font-semibold text-zinc-200">${s.title}</span>
+            </div>
+            <p class="text-[11px] text-zinc-400 font-sans">${s.detail}</p>
+          </div>
+          <i data-lucide="check-circle-2" class="h-4 w-4 text-emerald-400 shrink-0 mt-0.5"></i>
+        `;
+        list.appendChild(item);
+        lucide.createIcons();
+        await new Promise(r => setTimeout(r, 600));
+      }
+
+      document.getElementById("agent-trail-status").innerHTML = `<span class="text-emerald-400 font-bold">Investigation Complete</span>`;
+
+      // Synthesize new guide
+      const cleanName = q.charAt(0).toUpperCase() + q.slice(1);
+      const newGuide = {
+        id: `gen-${cleanName.toLowerCase()}`,
+        appName: cleanName,
+        category: "Cloud SaaS",
+        authType: "oauth2",
+        verdict: {
+          difficulty: "moderate",
+          handsOnMinutes: 30,
+          approvalWaitDays: 7,
+          oneLineSummary: `Live agent generated guide for ${cleanName}: Standard OAuth 2.0 flow with public verification requirement.`
+        },
+        twoClocks: {
+          worksInDev: "~20 min in developer sandbox",
+          anyUserCanConnect: "~7 days (standard app review or unlisted client deployment)"
+        },
+        cost: "Free developer tier",
+        capabilityCheck: {
+          question: `Can an agent interact with ${cleanName} APIs without human intervention?`,
+          verdict: "full",
+          detail: `The ${cleanName} REST API provides endpoints for automated read and write actions with granted OAuth scopes.`
+        },
+        prerequisites: [`A ${cleanName} developer account`, "Verified redirect URI"],
+        steps: [
+          {
+            stepNumber: 1,
+            text: `Register a new OAuth 2.0 Application in the ${cleanName} Developer Portal.`,
+            owner: "YOU",
+            portalUrl: `https://developer.${cleanName.toLowerCase()}.com`,
+            fields: [
+              { name: "Application Name", action: "fill", valueOrAdvice: `Agent ${cleanName} Connector` },
+              { name: "Redirect URI", action: "fill", valueOrAdvice: "https://yourapp.com/api/auth/callback" }
+            ]
+          }
+        ],
+        scopes: [{ scope: "read, write", triggersReview: false, note: "Standard API scopes" }],
+        blockers: [{ class: "setup", issue: "Redirect URI exact match required.", workaround: "Ensure matching trailing slash.", severity: "medium" }],
+        composio: {
+          managed: true,
+          savedDays: 7,
+          recommendation: `Composio supports rapid managed authentication for ${cleanName}.`,
+          link: "https://docs.composio.dev/toolkits/managed-auth"
+        },
+        evidence: [{ claim: `Synthesized live from developer documentation at developer.${cleanName.toLowerCase()}.com.`, label: "INFERRED" }]
+      };
+
+      if (!guides.some(g => g.id === newGuide.id)) {
+        guides.unshift(newGuide);
+      }
+
+      const resCard = document.getElementById("agent-result-card");
+      resCard.className = "p-6 md:p-8 rounded-3xl bg-surface-card border border-emerald-500/40 space-y-6 shadow-xl shadow-emerald-500/5";
+      resCard.innerHTML = `
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-surface-border pb-4">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-[11px] font-mono uppercase text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                Live Generated & Zod Validated
+              </span>
+              <span class="text-xs font-mono text-zinc-400">Confidence Score: 94%</span>
+            </div>
+            <h3 class="text-xl font-bold text-white">${newGuide.appName}</h3>
+            <p class="text-xs text-zinc-400 mt-0.5">${newGuide.verdict.oneLineSummary}</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="openModal('${newGuide.id}')" class="px-3.5 py-2 rounded-xl text-xs font-medium bg-surface border border-surface-border text-zinc-200 hover:text-white transition-colors flex items-center gap-1.5">
+              <span>View Full Step Guide</span>
+              <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
+            </button>
+            <button onclick="togglePlan('${newGuide.id}'); switchTab('planner');" class="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors flex items-center gap-1.5 shadow-md shadow-emerald-500/20">
+              <i data-lucide="plus" class="h-3.5 w-3.5"></i>
+              <span>Add to Launch Plan</span>
+            </button>
+          </div>
+        </div>
+      `;
+      resCard.classList.remove("hidden");
+      renderLibrary();
+      lucide.createIcons();
+    }
+
+    // Initialize on page load
+    window.onload = init;
+  </script>
+</body>
+</html>

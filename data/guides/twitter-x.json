@@ -1,0 +1,80 @@
+{
+  "id": "twitter-x",
+  "appName": "Twitter (X)",
+  "category": "Social & Media",
+  "authType": "oauth2",
+  "icon": "Twitter",
+  "verdict": {
+    "difficulty": "gated",
+    "handsOnMinutes": 50,
+    "approvalWaitDays": 14,
+    "oneLineSummary": "Gated by severe API paywalls ($100/mo to $5,000/mo) and restrictive monthly rate limits."
+  },
+  "twoClocks": {
+    "worksInDev": "~30 min (Free tier: write-only, 1,500 posts/mo cap)",
+    "anyUserCanConnect": "Immediate once paid subscription ($100/mo Basic or $5,000/mo Pro) is approved"
+  },
+  "cost": "Free tier has extreme limits. Basic tier is $100/mo; Pro tier is $5,000/mo.",
+  "capabilityCheck": {
+    "question": "Can an agent search recent tweets or read user timelines for free?",
+    "verdict": "blocked",
+    "detail": "SEVERE CAPABILITY & COST CEILING: Reading tweets or searching user timelines is completely blocked on the Free tier. Searching recent tweets requires at least the Basic tier ($100/mo), which caps results at 10,000 tweets/mo. Full archive search requires the Enterprise tier ($42,000/yr). Free tier is practically write-only.",
+    "warningCallout": "If your agent requires reading tweets or monitoring keywords, you cannot launch without a credit card paying minimum $100/month."
+  },
+  "prerequisites": ["A verified X (Twitter) account", "A paid API tier subscription for reading tweets"],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "text": "Go to developer.x.com → Developer Portal → Projects & Apps → Create App.",
+      "owner": "YOU",
+      "portalUrl": "https://developer.x.com/en/portal/dashboard",
+      "fields": [
+        { "name": "App Name", "action": "fill", "note": "Must be unique" }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "text": "Under 'User authentication settings', click 'Set up'.",
+      "owner": "YOU",
+      "fields": [
+        { "name": "App permissions", "action": "fill", "valueOrAdvice": "Read and write" },
+        { "name": "Type of App", "action": "fill", "valueOrAdvice": "Web App, Automated App or Bot" },
+        { "name": "Callback URI", "action": "fill", "valueOrAdvice": "https://yourapp.com/api/auth/callback/twitter" }
+      ]
+    },
+    {
+      "stepNumber": 3,
+      "text": "Choose your monthly API subscription tier.",
+      "owner": "YOU",
+      "fields": [
+        { "name": "Pricing tier", "action": "watch", "note": "Basic tier ($100/mo) required if reading any tweets." }
+      ]
+    }
+  ],
+  "scopes": [
+    { "scope": "tweet.read", "triggersReview": false, "tier": "non-sensitive", "note": "Read tweets (requires paid plan)" },
+    { "scope": "tweet.write", "triggersReview": false, "tier": "sensitive", "note": "Post tweets (1,500 posts/mo cap on free)" },
+    { "scope": "users.read", "triggersReview": false, "tier": "non-sensitive", "note": "Read user profiles" }
+  ],
+  "blockers": [
+    {
+      "class": "capability",
+      "issue": "Free tier has no search or read capability; apps receive 403 Forbidden when calling search endpoints.",
+      "workaround": "Upgrade to Basic API plan ($100/mo) or architect the agent around webhook triggers if applicable.",
+      "severity": "fatal"
+    }
+  ],
+  "composio": {
+    "managed": true,
+    "savedDays": 14,
+    "recommendation": "Composio provides managed integrations for Twitter/X that streamline OAuth token exchange and tool calling.",
+    "link": "https://docs.composio.dev/toolkits/managed-auth"
+  },
+  "evidence": [
+    {
+      "claim": "X developer portal enforces strict pricing tiers: Free plan does not allow tweet search endpoints; Basic plan is $100/mo.",
+      "label": "SOURCED",
+      "sourceUrl": "https://developer.x.com/en/docs/x-api/getting-started/about-x-api"
+    }
+  ]
+}

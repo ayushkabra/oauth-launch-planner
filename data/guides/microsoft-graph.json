@@ -1,0 +1,90 @@
+{
+  "id": "microsoft-graph",
+  "appName": "Microsoft (Outlook & Teams)",
+  "category": "Enterprise & Productivity",
+  "authType": "oauth2",
+  "icon": "Grid",
+  "verdict": {
+    "difficulty": "gated",
+    "handsOnMinutes": 75,
+    "approvalWaitDays": 30,
+    "oneLineSummary": "Gated by Azure AD multi-tenant configuration, Enterprise Admin Consent walls, and MPN publisher verification."
+  },
+  "twoClocks": {
+    "worksInDev": "~45 min (single-tenant testing)",
+    "anyUserCanConnect": "3–6 weeks (Microsoft Cloud Partner Program verification + Enterprise admin consent)"
+  },
+  "cost": "Setup free. Publisher verification requires an active Dun & Bradstreet (D-U-N-S) business registration.",
+  "capabilityCheck": {
+    "question": "Can an agent read emails and calendar events across Microsoft 365 organizations?",
+    "verdict": "full",
+    "detail": "Microsoft Graph has comprehensive APIs (Mail.ReadWrite, Calendars.ReadWrite). The wall is ENTERPRISE GOVERNANCE: Most corporate Microsoft 365 tenants block users from authorizing non-verified multi-tenant apps until an IT administrator grants tenant-wide consent."
+  },
+  "prerequisites": [
+    "An Azure / Microsoft Entra ID tenant with admin rights",
+    "A verified Microsoft Partner Network (MPN) ID for Publisher Verification",
+    "D-U-N-S business registry matching company domain"
+  ],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "text": "Open Microsoft Entra admin center (portal.azure.com) → App registrations → New registration.",
+      "owner": "YOU",
+      "portalUrl": "https://entra.microsoft.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/RegisteredApps",
+      "fields": [
+        { "name": "Name", "action": "fill", "valueOrAdvice": "e.g. Agent 365 Connector" },
+        { "name": "Supported account types", "action": "watch", "note": "MUST select 'Accounts in any organizational directory (Any Microsoft Entra ID tenant - Multitenant)'. Default single-tenant will block external users." },
+        { "name": "Redirect URI", "action": "fill", "valueOrAdvice": "Web: https://yourapp.com/api/auth/callback/microsoft" }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "text": "Add Microsoft Graph Delegated Permissions under API permissions.",
+      "owner": "AGENT+YOU",
+      "fields": [
+        { "name": "Delegated permissions", "action": "fill", "valueOrAdvice": "Mail.Read, Calendars.ReadWrite, User.Read" },
+        { "name": "Admin consent required permissions", "action": "watch", "note": "Avoid scopes with 'Admin Consent Required: Yes' (like Mail.ReadWrite.All) unless building internal tooling." }
+      ]
+    },
+    {
+      "stepNumber": 3,
+      "text": "Link MPN ID under 'Branding & properties' for Publisher Verification.",
+      "owner": "YOU",
+      "fields": [
+        { "name": "MPN ID", "action": "fill", "note": "Required to remove the alarming 'Unverified Publisher' blue warning banner during login." }
+      ]
+    }
+  ],
+  "scopes": [
+    { "scope": "User.Read", "triggersReview": false, "tier": "non-sensitive", "note": "Sign in and read user profile" },
+    { "scope": "Mail.ReadWrite", "triggersReview": true, "tier": "sensitive", "note": "Read and write user emails" },
+    { "scope": "Calendars.ReadWrite", "triggersReview": true, "tier": "sensitive", "note": "Read and create meetings" }
+  ],
+  "blockers": [
+    {
+      "class": "approval",
+      "issue": "Enterprise Admin Consent: In most corporate tenants, standard employees will hit 'Need admin approval' and cannot connect without an IT ticket.",
+      "workaround": "Provide an Admin Consent onboarding link (`/adminconsent`), or use Composio Managed Auth.",
+      "severity": "fatal"
+    },
+    {
+      "class": "setup",
+      "issue": "Publisher verification requires matching company registration with Dun & Bradstreet, taking 2–4 weeks through legal/IT channels.",
+      "workaround": "Test with unverified status in developer sandboxes while legal processes MPN paperwork.",
+      "severity": "high"
+    }
+  ],
+  "composio": {
+    "managed": true,
+    "savedDays": 30,
+    "recommendation": "Microsoft Entra publisher verification and admin consent hurdles make Composio Managed Auth extremely attractive for rapid deployment.",
+    "link": "https://docs.composio.dev/toolkits/managed-auth"
+  },
+  "evidence": [
+    {
+      "claim": "Microsoft Entra requires verified publisher status for multi-tenant apps to avoid warning banners, and tenants enforce admin consent by default.",
+      "label": "SOURCED",
+      "sourceUrl": "https://learn.microsoft.com/en-us/entra/identity-platform/publisher-verification-overview"
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "id": "github-app",
+  "appName": "GitHub (GitHub App)",
+  "category": "Developer Tools",
+  "authType": "oauth2",
+  "icon": "Cpu",
+  "verdict": {
+    "difficulty": "moderate",
+    "handsOnMinutes": 35,
+    "approvalWaitDays": 0,
+    "oneLineSummary": "Fine-grained permissions and webhooks, but watch out for the required Webhook URL trap."
+  },
+  "twoClocks": {
+    "worksInDev": "~25 min",
+    "anyUserCanConnect": "Immediate (if set to 'Any account' distribution)"
+  },
+  "cost": "Free",
+  "capabilityCheck": {
+    "question": "Can an agent receive real-time webhook events and act on organizational repositories?",
+    "verdict": "full",
+    "detail": "GitHub Apps are designed for organization-level bot automation with granular, per-resource permissions (e.g. read issues, write pull requests without granting full repo access). Webhooks are first-class."
+  },
+  "prerequisites": ["A GitHub account or organization"],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "text": "Navigate to Settings → Developer settings → GitHub Apps → New GitHub App.",
+      "owner": "YOU",
+      "portalUrl": "https://github.com/settings/apps/new",
+      "fields": [
+        { "name": "GitHub App name", "action": "fill", "note": "Must be globally unique across all of GitHub." },
+        { "name": "Homepage URL", "action": "fill", "valueOrAdvice": "http://localhost:3000 or your website" },
+        { "name": "Callback URL", "action": "fill", "note": "Required if you request user authorization tokens" }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "text": "DISABLE Webhooks if you only need API access (The #1 beginner blocker).",
+      "owner": "YOU",
+      "fields": [
+        { "name": "Webhook → 'Active' checkbox", "action": "watch", "note": "UNCHECK THIS. By default, GitHub checks 'Active' and will throw a validation error if you don't provide a public Webhook URL." },
+        { "name": "Webhook URL / Webhook secret", "action": "leave", "note": "Leave empty once Active is unchecked." }
+      ]
+    },
+    {
+      "stepNumber": 3,
+      "text": "Select granular Repository and Organization permissions.",
+      "owner": "AGENT+YOU",
+      "fields": [
+        { "name": "Permissions (Repository / Organization / Account)", "action": "watch", "note": "Defaults to 'No access' on all resources. Explicitly select only what your agent needs (e.g. Pull requests: Read & write)." }
+      ]
+    },
+    {
+      "stepNumber": 4,
+      "text": "Choose installation availability under 'Where can this GitHub App be installed?'.",
+      "owner": "YOU",
+      "fields": [
+        { "name": "Where can this be installed?", "action": "fill", "valueOrAdvice": "Only on this account (during dev), Any account (for public users)" }
+      ]
+    }
+  ],
+  "scopes": [
+    { "scope": "issues:write", "triggersReview": false, "tier": "non-sensitive", "note": "Granular issue management" },
+    { "scope": "pull_requests:write", "triggersReview": false, "tier": "sensitive", "note": "Granular PR creation & reviews" }
+  ],
+  "blockers": [
+    {
+      "class": "setup",
+      "issue": "The Webhook 'Active' checkbox is enabled by default, blocking submission with 'Webhook URL cannot be blank' even when you don't need webhooks.",
+      "workaround": "Uncheck the 'Active' checkbox under Webhook settings before clicking Create.",
+      "severity": "high"
+    }
+  ],
+  "composio": {
+    "managed": true,
+    "savedDays": 0,
+    "recommendation": "Composio provides managed tooling that eliminates manual private key creation and JWT generation required by raw GitHub Apps.",
+    "link": "https://docs.composio.dev/toolkits/managed-auth"
+  },
+  "evidence": [
+    {
+      "claim": "Directly tested GitHub App registration: confirmed global name uniqueness requirement and observed webhook active toggle blocking the submit button.",
+      "label": "TESTED",
+      "sourceUrl": "https://github.com/settings/apps/new"
+    }
+  ]
+}

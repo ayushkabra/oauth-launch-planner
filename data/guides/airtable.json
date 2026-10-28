@@ -1,0 +1,68 @@
+{
+  "id": "airtable",
+  "appName": "Airtable",
+  "category": "Database & Spreadsheets",
+  "authType": "oauth2",
+  "icon": "Table",
+  "verdict": {
+    "difficulty": "moderate",
+    "handsOnMinutes": 30,
+    "approvalWaitDays": 0,
+    "oneLineSummary": "Modern OAuth 2.0 with PKCE required; users must explicitly choose which bases to grant access to."
+  },
+  "twoClocks": {
+    "worksInDev": "~20 min",
+    "anyUserCanConnect": "Immediate (instant multi-tenant authorization)"
+  },
+  "cost": "Free (Free account tier includes 1,000 records per base)",
+  "capabilityCheck": {
+    "question": "Can an agent create tables and modify schema definitions dynamically?",
+    "verdict": "partial",
+    "detail": "Airtable supports reading and writing records easily. However, modifying base schemas or creating new tables programmatically requires the 'schema.bases:write' scope, which requires the workspace to be on an Enterprise or Business plan."
+  },
+  "prerequisites": ["An Airtable account", "Implementation of OAuth 2.0 PKCE (code_verifier / code_challenge)"],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "text": "Go to airtable.com/create/oauth → Register new OAuth integration.",
+      "owner": "YOU",
+      "portalUrl": "https://airtable.com/create/oauth",
+      "fields": [
+        { "name": "Name", "action": "fill", "valueOrAdvice": "e.g. Agent Airtable Sync" },
+        { "name": "OAuth redirect URL", "action": "fill", "valueOrAdvice": "https://yourapp.com/api/auth/callback/airtable" }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "text": "Select Scopes and configure PKCE support in your auth client.",
+      "owner": "AGENT",
+      "note": "Airtable strictly requires PKCE (Proof Key for Code Exchange) with SHA-256 for all OAuth flows."
+    }
+  ],
+  "scopes": [
+    { "scope": "data.records:read", "triggersReview": false, "tier": "non-sensitive", "note": "Read records in granted bases" },
+    { "scope": "data.records:write", "triggersReview": false, "tier": "sensitive", "note": "Create and update records" },
+    { "scope": "schema.bases:read", "triggersReview": false, "tier": "non-sensitive", "note": "Read table schemas" }
+  ],
+  "blockers": [
+    {
+      "class": "setup",
+      "issue": "Airtable rejects standard OAuth2 authorization codes that lack a PKCE `code_challenge` parameter.",
+      "workaround": "Ensure your auth library generates a random `code_verifier` and passes its SHA-256 hash as `code_challenge`.",
+      "severity": "high"
+    }
+  ],
+  "composio": {
+    "managed": true,
+    "savedDays": 0,
+    "recommendation": "Composio manages Airtable PKCE exchanges and token refreshes transparently for agent execution.",
+    "link": "https://docs.composio.dev/toolkits/managed-auth"
+  },
+  "evidence": [
+    {
+      "claim": "Airtable requires OAuth 2.0 with PKCE and allows immediate multi-tenant authorization without provider review.",
+      "label": "SOURCED",
+      "sourceUrl": "https://airtable.com/developers/web/api/oauth-reference"
+    }
+  ]
+}

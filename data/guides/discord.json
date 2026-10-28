@@ -1,0 +1,79 @@
+{
+  "id": "discord",
+  "appName": "Discord",
+  "category": "Communication & Community",
+  "authType": "oauth2",
+  "icon": "MessageCircle",
+  "verdict": {
+    "difficulty": "moderate",
+    "handsOnMinutes": 25,
+    "approvalWaitDays": 0,
+    "oneLineSummary": "Fast setup, but requires whitelisting Privileged Gateway Intents and verification at 100+ servers."
+  },
+  "twoClocks": {
+    "worksInDev": "~20 min",
+    "anyUserCanConnect": "Immediate under 100 servers; Verification + ID audit required at 100+ servers"
+  },
+  "cost": "Free",
+  "capabilityCheck": {
+    "question": "Can an agent read channel messages without being explicitly @mentioned?",
+    "verdict": "partial",
+    "detail": "Reading unmentioned message content requires the 'Message Content Intent' checkbox enabled in the developer portal. Once your bot joins 100 servers, Discord forces you to apply for bot verification and submit a government ID to keep this intent."
+  },
+  "prerequisites": ["A Discord developer account", "Two-Factor Authentication enabled on your account"],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "text": "Go to discord.com/developers/applications → New Application.",
+      "owner": "YOU",
+      "portalUrl": "https://discord.com/developers/applications",
+      "fields": [
+        { "name": "Name", "action": "fill", "valueOrAdvice": "e.g. Agent Community Bot" }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "text": "Navigate to the 'Bot' tab and click 'Reset Token' to generate your bot token.",
+      "owner": "YOU",
+      "fields": [
+        { "name": "Privileged Gateway Intents", "action": "watch", "note": "Must toggle 'Message Content Intent' ON if your agent reads messages." },
+        { "name": "Public Bot", "action": "fill", "note": "Check 'Public Bot' to allow any user to invite the bot to their server." }
+      ]
+    },
+    {
+      "stepNumber": 3,
+      "text": "Generate an invite link under OAuth2 → URL Generator.",
+      "owner": "AGENT+YOU",
+      "fields": [
+        { "name": "Scopes", "action": "fill", "valueOrAdvice": "bot, applications.commands" },
+        { "name": "Bot Permissions", "action": "fill", "valueOrAdvice": "Send Messages, Read Message History" }
+      ]
+    }
+  ],
+  "scopes": [
+    { "scope": "bot", "triggersReview": false, "tier": "non-sensitive", "note": "Add bot to server" },
+    { "scope": "identify", "triggersReview": false, "tier": "non-sensitive", "note": "Read user ID" },
+    { "scope": "guilds", "triggersReview": false, "tier": "non-sensitive", "note": "Read server list" }
+  ],
+  "blockers": [
+    {
+      "class": "setup",
+      "issue": "Forgetting to enable 'Message Content Intent' under the Bot tab causes the bot to receive empty strings (`\"\"`) for message contents.",
+      "workaround": "Turn on Message Content Intent in the Discord Developer Portal under Bot settings.",
+      "severity": "high"
+    }
+  ],
+  "composio": {
+    "managed": true,
+    "savedDays": 0,
+    "recommendation": "Composio provides pre-configured Discord actions and webhook event listeners for agent interactions.",
+    "link": "https://docs.composio.dev/toolkits/managed-auth"
+  },
+  "evidence": [
+    {
+      "claim": "Discord requires toggling privileged gateway intents for message reading and mandates developer verification at 100+ servers.",
+      "label": "SOURCED",
+      "sourceUrl": "https://discord.com/developers/docs/topics/gateway#privileged-intents"
+    }
+  ]
+}

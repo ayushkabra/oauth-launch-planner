@@ -1,0 +1,88 @@
+{
+  "id": "notion",
+  "appName": "Notion",
+  "category": "Workspace & Docs",
+  "authType": "oauth2",
+  "icon": "FileText",
+  "verdict": {
+    "difficulty": "moderate",
+    "handsOnMinutes": 25,
+    "approvalWaitDays": 2,
+    "oneLineSummary": "Relatively straightforward OAuth flow; switch from Internal to Public integration to enable multi-tenant connects."
+  },
+  "twoClocks": {
+    "worksInDev": "~15 min (Internal integration)",
+    "anyUserCanConnect": "1–2 days (Public integration review)"
+  },
+  "cost": "Free",
+  "capabilityCheck": {
+    "question": "Can an agent create, read, and search Notion pages and databases?",
+    "verdict": "full",
+    "detail": "Notion's API supports full block-level and database read/write access. Note: Users must explicitly grant access to specific pages or parent databases when authorizing your integration."
+  },
+  "prerequisites": ["A Notion account", "A company domain and privacy policy URL for Public integrations"],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "text": "Go to notion.so/my-integrations → New integration.",
+      "owner": "YOU",
+      "portalUrl": "https://www.notion.so/my-integrations",
+      "fields": [
+        { "name": "Name", "action": "fill", "valueOrAdvice": "e.g. Agent Notion Sync" },
+        { "name": "Associated workspace", "action": "fill", "note": "Pick your primary workspace" },
+        { "name": "Type", "action": "watch", "note": "Defaults to 'Internal'. You MUST switch to 'Public' under Distribution settings to allow any user to connect." }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "text": "Configure Capabilities under the Capabilities tab.",
+      "owner": "AGENT+YOU",
+      "fields": [
+        { "name": "Content Capabilities", "action": "fill", "note": "Read content, Update content, Insert content" },
+        { "name": "User Capabilities", "action": "leave", "note": "Read user information without email is usually sufficient" }
+      ]
+    },
+    {
+      "stepNumber": 3,
+      "text": "Switch to 'Public' under Distribution and fill required metadata.",
+      "owner": "YOU",
+      "fields": [
+        { "name": "Company name & website", "action": "fill" },
+        { "name": "Privacy policy URL", "action": "fill", "note": "Required for public OAuth" },
+        { "name": "Redirect URIs", "action": "fill", "valueOrAdvice": "https://yourapp.com/api/auth/callback/notion" }
+      ]
+    }
+  ],
+  "scopes": [
+    { "scope": "read_content", "triggersReview": false, "tier": "non-sensitive", "note": "Read pages and databases" },
+    { "scope": "update_content", "triggersReview": false, "tier": "non-sensitive", "note": "Update existing pages" },
+    { "scope": "insert_content", "triggersReview": false, "tier": "non-sensitive", "note": "Create new pages and blocks" }
+  ],
+  "blockers": [
+    {
+      "class": "setup",
+      "issue": "New integrations are set to 'Internal' by default, meaning only your own workspace members can authenticate.",
+      "workaround": "Navigate to the Distribution tab and toggle to 'Public Integration' to get the OAuth Client ID and Secret.",
+      "severity": "medium"
+    },
+    {
+      "class": "capability",
+      "issue": "Notion OAuth requires users to explicitly pick which root pages to share; if the user does not select a page, the agent receives 404 Not Found.",
+      "workaround": "Display an instructional prompt in your onboarding UX telling users to select 'All Pages' or their target workspace root during Notion's consent dialog.",
+      "severity": "medium"
+    }
+  ],
+  "composio": {
+    "managed": true,
+    "savedDays": 2,
+    "recommendation": "Composio provides fully managed Notion OAuth with standardized page and database action execution.",
+    "link": "https://docs.composio.dev/toolkits/managed-auth"
+  },
+  "evidence": [
+    {
+      "claim": "Verified Notion integration setup: internal tokens are instant, while public distribution requires privacy URL and basic review.",
+      "label": "SOURCED",
+      "sourceUrl": "https://developers.notion.com/docs/authorization"
+    }
+  ]
+}

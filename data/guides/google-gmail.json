@@ -1,0 +1,120 @@
+{
+  "id": "google-gmail",
+  "appName": "Google (Gmail)",
+  "category": "Email & Productivity",
+  "authType": "oauth2",
+  "icon": "Mail",
+  "verdict": {
+    "difficulty": "gated",
+    "handsOnMinutes": 60,
+    "approvalWaitDays": 60,
+    "oneLineSummary": "Gated by 6-12 week CASA security audit ($3k-$10k) for any Gmail content scopes."
+  },
+  "twoClocks": {
+    "worksInDev": "~1 hr (100 test users, tokens expire in 7 days)",
+    "anyUserCanConnect": "6–12 weeks + third-party CASA security assessment"
+  },
+  "cost": "Setup free. Restricted-scope CASA security assessment is paid via a third-party lab ($3,000–$10,000).",
+  "capabilityCheck": {
+    "question": "Can you read and send email on the user's behalf?",
+    "verdict": "full",
+    "detail": "Gmail scopes allow reading and sending — no capability ceiling on the actions themselves. The wall is ACCESS: Gmail content scopes are 'restricted' and gated behind verification + CASA assessment before any non-test user can connect."
+  },
+  "prerequisites": [
+    "A Google Cloud project",
+    "A verified domain in Google Search Console (required once you add a homepage or privacy policy URL)",
+    "A publicly accessible Privacy Policy URL"
+  ],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "text": "Create a Google Cloud project.",
+      "owner": "YOU",
+      "portalUrl": "https://console.cloud.google.com/",
+      "fields": [
+        { "name": "Project name", "action": "fill", "valueOrAdvice": "e.g. agent-gmail-connector" },
+        { "name": "Organization / Location", "action": "leave", "note": "Shows only 'No organization' on a personal Gmail — that's correct, not an error. Leave it." }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "text": "Configure the OAuth consent screen under 'Google Auth Platform → Branding'.",
+      "owner": "AGENT+YOU",
+      "portalUrl": "https://console.cloud.google.com/auth/branding",
+      "fields": [
+        { "name": "App name / User support email / Developer contact", "action": "fill", "valueOrAdvice": "Provide support and developer contact" },
+        { "name": "App logo", "action": "watch", "note": "LEAVE EMPTY. Uploading a logo immediately triggers brand verification, delaying your project by weeks." },
+        { "name": "App home page / Privacy policy / Authorized domains", "action": "leave", "note": "Skip these while in Testing mode" }
+      ]
+    },
+    {
+      "stepNumber": 3,
+      "text": "Set Audience to External and add yourself as a test user. Leave Publishing status on 'Testing'.",
+      "owner": "YOU",
+      "portalUrl": "https://console.cloud.google.com/auth/audience",
+      "fields": [
+        { "name": "User type", "action": "fill", "valueOrAdvice": "External" },
+        { "name": "Test users", "action": "fill", "valueOrAdvice": "Add your own email", "note": "Without this, even you cannot log in (hard cap of 100 test accounts)" },
+        { "name": "Publish app", "action": "watch", "note": "DO NOT CLICK. Publishing starts the weeks-long verification pipeline." }
+      ]
+    },
+    {
+      "stepNumber": 4,
+      "text": "Add scopes under 'Data Access' (Notice Google renamed 'Scopes' to 'Data Access').",
+      "owner": "AGENT+YOU",
+      "portalUrl": "https://console.cloud.google.com/auth/scopes",
+      "fields": [
+        { "name": "Basic scopes (openid, userinfo.email, userinfo.profile)", "action": "fill", "note": "No review required" },
+        { "name": "Gmail scopes (gmail.readonly, gmail.send)", "action": "watch", "note": "Flags as 'restricted' → mandates verification + third-party CASA security assessment" }
+      ]
+    },
+    {
+      "stepNumber": 5,
+      "text": "Create OAuth Client Credentials under 'Clients' (= credentials).",
+      "owner": "YOU",
+      "portalUrl": "https://console.cloud.google.com/auth/clients",
+      "fields": [
+        { "name": "Application type", "action": "fill", "valueOrAdvice": "Web application" },
+        { "name": "Authorized redirect URIs", "action": "fill", "note": "Must match your code character-for-character including trailing slashes" },
+        { "name": "Authorized JavaScript origins", "action": "leave", "note": "Optional" }
+      ]
+    }
+  ],
+  "scopes": [
+    { "scope": "openid / userinfo.email / userinfo.profile", "triggersReview": false, "tier": "non-sensitive", "note": "Basic identity — no review" },
+    { "scope": "https://www.googleapis.com/auth/gmail.readonly", "triggersReview": true, "tier": "restricted", "note": "RESTRICTED — Requires CASA Tier 2 audit" },
+    { "scope": "https://www.googleapis.com/auth/gmail.send", "triggersReview": true, "tier": "restricted", "note": "RESTRICTED — Requires full verification" }
+  ],
+  "blockers": [
+    {
+      "class": "setup",
+      "issue": "Scopes are hidden under a tab named 'Data Access' (not 'Scopes'); 'Organization' field looks mandatory but must be 'No organization' on personal Gmail.",
+      "workaround": "Navigate directly to Data Access; select 'No organization' and proceed.",
+      "severity": "medium"
+    },
+    {
+      "class": "approval",
+      "issue": "Any Gmail content scope is 'restricted' — production access for any public user requires Google verification + a paid CASA security assessment (6–12 weeks, $3k–$10k).",
+      "workaround": "Stay in Testing mode for internal prototypes, or use Composio Managed Auth to bypass your own CASA assessment.",
+      "severity": "fatal"
+    }
+  ],
+  "composio": {
+    "managed": true,
+    "savedDays": 60,
+    "recommendation": "Gmail is the single most painful DIY OAuth path. Using Composio's managed Gmail app bypasses the 60-day CASA security review and thousands in audit costs.",
+    "link": "https://docs.composio.dev/toolkits/managed-auth"
+  },
+  "evidence": [
+    {
+      "claim": "Configured the consent screen and saw the restricted-scope warning appear when adding a Gmail scope; confirmed Testing-mode 100-user cap on the Audience page.",
+      "label": "TESTED",
+      "sourceUrl": "https://console.cloud.google.com/auth/audience"
+    },
+    {
+      "claim": "Restricted-scope verification requires a CASA security assessment and commonly takes 6–12 weeks with third-party assessor costs.",
+      "label": "SOURCED",
+      "sourceUrl": "https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification"
+    }
+  ]
+}

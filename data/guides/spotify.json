@@ -1,0 +1,79 @@
+{
+  "id": "spotify",
+  "appName": "Spotify",
+  "category": "Media & Audio",
+  "authType": "oauth2",
+  "icon": "Music",
+  "verdict": {
+    "difficulty": "moderate",
+    "handsOnMinutes": 20,
+    "approvalWaitDays": 20,
+    "oneLineSummary": "Fast dev mode, but public launch is capped at 25 users until Spotify approves a Quota Extension review."
+  },
+  "twoClocks": {
+    "worksInDev": "~15 min (strictly capped at 25 whitelisted Spotify accounts)",
+    "anyUserCanConnect": "2–4 weeks (Spotify Quota Extension approval)"
+  },
+  "cost": "Free",
+  "capabilityCheck": {
+    "question": "Can an agent control playback and modify user playlists?",
+    "verdict": "full",
+    "detail": "Playback control and playlist creation work well with active Spotify Premium accounts. Note: Spotify's terms strictly prohibit using metadata or user listening histories for LLM model training."
+  },
+  "prerequisites": ["A Spotify Developer account", "Active Spotify Premium account for testing playback controls"],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "text": "Go to developer.spotify.com/dashboard → Create app.",
+      "owner": "YOU",
+      "portalUrl": "https://developer.spotify.com/dashboard",
+      "fields": [
+        { "name": "App name & description", "action": "fill" },
+        { "name": "Redirect URIs", "action": "fill", "valueOrAdvice": "http://localhost:3000/api/auth/callback/spotify" },
+        { "name": "Which API/SDKs are you planning to use?", "action": "fill", "valueOrAdvice": "Web API" }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "text": "Add user emails under User Management.",
+      "owner": "YOU",
+      "fields": [
+        { "name": "User Management", "action": "watch", "note": "In Development Mode, ONLY users explicitly added here (up to 25) can log in. All other users get 'User not registered in developer dashboard' error." }
+      ]
+    },
+    {
+      "stepNumber": 3,
+      "text": "Apply for Quota Extension to enable public distribution.",
+      "owner": "YOU",
+      "fields": [
+        { "name": "Quota Extension Request", "action": "watch", "note": "Requires video demo showing UI and proof that data is not used for AI model training." }
+      ]
+    }
+  ],
+  "scopes": [
+    { "scope": "user-read-playback-state", "triggersReview": false, "tier": "non-sensitive", "note": "Read player state" },
+    { "scope": "user-modify-playback-state", "triggersReview": true, "tier": "sensitive", "note": "Control player" },
+    { "scope": "playlist-modify-public", "triggersReview": true, "tier": "sensitive", "note": "Create/edit playlists" }
+  ],
+  "blockers": [
+    {
+      "class": "setup",
+      "issue": "Development Mode 25-user hard cap: Public users encounter an unexplained authentication error unless manually added by email to the developer dashboard.",
+      "workaround": "Submit a Quota Extension form before marketing your integration to external users.",
+      "severity": "high"
+    }
+  ],
+  "composio": {
+    "managed": true,
+    "savedDays": 20,
+    "recommendation": "Composio provides managed Spotify connections that bypass individual quota management for standard tool execution.",
+    "link": "https://docs.composio.dev/toolkits/managed-auth"
+  },
+  "evidence": [
+    {
+      "claim": "Spotify enforces a strict 25-user limit in developer mode and requires manual approval via Quota Extension to open access.",
+      "label": "SOURCED",
+      "sourceUrl": "https://developer.spotify.com/documentation/web-api/concepts/quota-modes"
+    }
+  ]
+}

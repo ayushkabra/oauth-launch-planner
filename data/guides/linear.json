@@ -1,0 +1,76 @@
+{
+  "id": "linear",
+  "appName": "Linear",
+  "category": "Project Management",
+  "authType": "oauth2",
+  "icon": "CheckSquare",
+  "verdict": {
+    "difficulty": "trivial",
+    "handsOnMinutes": 15,
+    "approvalWaitDays": 0,
+    "oneLineSummary": "Fast and painless developer experience: standard OAuth2 with immediate multi-workspace connection."
+  },
+  "twoClocks": {
+    "worksInDev": "~15 min",
+    "anyUserCanConnect": "Same day — instant multi-tenant authorization"
+  },
+  "cost": "Free",
+  "capabilityCheck": {
+    "question": "Can an agent create issues, update cycles, and read project roadmaps?",
+    "verdict": "full",
+    "detail": "Linear has a high-performance GraphQL API. Full read and write capabilities are supported across issues, comments, roadmaps, and teams with no artificial capability ceiling."
+  },
+  "prerequisites": ["A Linear workspace account"],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "text": "Go to Linear Settings → Account → Security & access → Applications → Create new.",
+      "owner": "YOU",
+      "portalUrl": "https://linear.app/settings/api",
+      "fields": [
+        { "name": "Application name", "action": "fill", "valueOrAdvice": "e.g. Agent Linear Sync" },
+        { "name": "Callback URLs", "action": "fill", "valueOrAdvice": "https://yourapp.com/api/auth/callback/linear" }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "text": "Select Scopes (read, write, issues:create, comments:create).",
+      "owner": "AGENT+YOU",
+      "fields": [
+        { "name": "Scopes", "action": "fill", "note": "Linear scopes are clear and grant immediate workspace access without manual approval." }
+      ]
+    },
+    {
+      "stepNumber": 3,
+      "text": "Copy Client ID and Client Secret.",
+      "owner": "YOU",
+      "note": "Ready to authenticate immediately in development or production."
+    }
+  ],
+  "scopes": [
+    { "scope": "read", "triggersReview": false, "tier": "non-sensitive", "note": "Read issues, teams, users" },
+    { "scope": "write", "triggersReview": false, "tier": "sensitive", "note": "Update issues and projects" },
+    { "scope": "issues:create", "triggersReview": false, "tier": "non-sensitive", "note": "Create new issues" }
+  ],
+  "blockers": [
+    {
+      "class": "setup",
+      "issue": "Actor authorization nuance: Linear OAuth tokens act on behalf of the installing user. If the user leaves the workspace, the token is invalidated.",
+      "workaround": "Recommend connecting with a dedicated machine user / bot user account in large enterprise workspaces.",
+      "severity": "low"
+    }
+  ],
+  "composio": {
+    "managed": true,
+    "savedDays": 0,
+    "recommendation": "Composio provides ready-to-use Linear integration with clean tool calling for issue management.",
+    "link": "https://docs.composio.dev/toolkits/managed-auth"
+  },
+  "evidence": [
+    {
+      "claim": "Linear supports public OAuth 2.0 without review gates; users can authorize instantly.",
+      "label": "TESTED",
+      "sourceUrl": "https://developers.linear.app/docs/graphql/working-with-the-graphql-api"
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "id": "hubspot",
+  "appName": "HubSpot",
+  "category": "CRM & Sales",
+  "authType": "oauth2",
+  "icon": "Users",
+  "verdict": {
+    "difficulty": "moderate",
+    "handsOnMinutes": 40,
+    "approvalWaitDays": 10,
+    "oneLineSummary": "Requires a dedicated HubSpot Developer Account; standard multi-tenant app review takes ~1-2 weeks."
+  },
+  "twoClocks": {
+    "worksInDev": "~20 min (via a free Developer Test Account)",
+    "anyUserCanConnect": "7–14 days (Marketplace listing review for public unlisted install)"
+  },
+  "cost": "Free developer account. Paid subscriptions required for custom objects or high API limits.",
+  "capabilityCheck": {
+    "question": "Can an agent create and update CRM contacts, deals, and companies?",
+    "verdict": "full",
+    "detail": "HubSpot provides rich CRM REST endpoints. However, custom object endpoints require the connecting user's HubSpot portal to be on Enterprise or Pro tiers."
+  },
+  "prerequisites": [
+    "A HubSpot Developer Account (separate from standard user accounts)",
+    "A Developer Test Account portal created inside your dev portal"
+  ],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "text": "Sign up for a dedicated Developer Account at developers.hubspot.com.",
+      "owner": "YOU",
+      "portalUrl": "https://developers.hubspot.com",
+      "fields": [
+        { "name": "Account type", "action": "fill", "note": "Must create a Developer portal, not a normal sales portal." }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "text": "Go to Apps → Create app → Auth Settings.",
+      "owner": "YOU",
+      "fields": [
+        { "name": "Redirect URL", "action": "fill", "valueOrAdvice": "https://yourapp.com/api/auth/callback/hubspot" },
+        { "name": "Scopes", "action": "watch", "note": "Pick minimal CRM scopes (e.g. crm.objects.contacts.read, crm.objects.contacts.write). Requesting admin scopes triggers extended security reviews." }
+      ]
+    },
+    {
+      "stepNumber": 3,
+      "text": "Create a Developer Test Account under Testing tab to test install.",
+      "owner": "AGENT+YOU",
+      "note": "You cannot test install an unlisted app in your developer portal; you must install it into a child Test Portal."
+    }
+  ],
+  "scopes": [
+    { "scope": "crm.objects.contacts.read", "triggersReview": false, "tier": "non-sensitive", "note": "Read contact records" },
+    { "scope": "crm.objects.contacts.write", "triggersReview": false, "tier": "sensitive", "note": "Write & update contact records" },
+    { "scope": "crm.schemas.custom.read", "triggersReview": true, "tier": "restricted", "note": "Custom CRM schemas" }
+  ],
+  "blockers": [
+    {
+      "class": "setup",
+      "issue": "Attempting to test install an app inside the primary Developer Account produces an 'App cannot be installed in this account' error.",
+      "workaround": "Create a dedicated 'Test Account' from within the Developer console dashboard and install the app there.",
+      "severity": "medium"
+    }
+  ],
+  "composio": {
+    "managed": true,
+    "savedDays": 10,
+    "recommendation": "Composio provides managed HubSpot auth and pre-built CRM actions for instant agent operations.",
+    "link": "https://docs.composio.dev/toolkits/managed-auth"
+  },
+  "evidence": [
+    {
+      "claim": "HubSpot requires apps to be installed into separate test accounts during development and mandates marketplace review for multi-tenant distribution.",
+      "label": "SOURCED",
+      "sourceUrl": "https://developers.hubspot.com/docs/api/working-with-oauth"
+    }
+  ]
+}

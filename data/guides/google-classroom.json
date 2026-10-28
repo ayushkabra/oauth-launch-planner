@@ -1,0 +1,90 @@
+{
+  "id": "google-classroom",
+  "appName": "Google Classroom",
+  "category": "EdTech & Education",
+  "authType": "oauth2",
+  "icon": "GraduationCap",
+  "verdict": {
+    "difficulty": "hard",
+    "handsOnMinutes": 90,
+    "approvalWaitDays": 60,
+    "oneLineSummary": "Severe capability ceiling: write operations are restricted to coursework created by your own project."
+  },
+  "twoClocks": {
+    "worksInDev": "~1.5 hr",
+    "anyUserCanConnect": "6–12 weeks (restricted scopes) — AND verify capability ceiling first"
+  },
+  "cost": "Setup free; restricted coursework scopes require Google verification and security review.",
+  "capabilityCheck": {
+    "question": "Can your agent WRITE coursework or announcements into a teacher's classroom?",
+    "verdict": "partial",
+    "detail": "CRITICAL CAPABILITY CEILING: The Google Classroom API allows an external project to modify ONLY coursework created by that exact project. You cannot freely write into, grade, or modify coursework authored by the teacher in the native Classroom UI. Furthermore, posting announcements on a teacher's behalf requires the teacher's direct OAuth token, not a service account. Many teams build the entire auth pipeline before realizing the write API is effectively locked down.",
+    "warningCallout": "Check this before writing any code. If your agent expects to push content into teacher-created assignments, the API will reject your requests with 403 Forbidden regardless of your scopes."
+  },
+  "prerequisites": [
+    "A Google Cloud project with Google Classroom API enabled",
+    "Configured OAuth consent screen (same console flow as Gmail)",
+    "Clear architectural confirmation: are you only reading data, or writing into teacher assignments?"
+  ],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "text": "CRITICAL FEASIBILITY CHECK: Send a manual Postman call to the Classroom API using temporary OAuth credentials to verify your exact write path before setting up permanent apps.",
+      "owner": "AGENT+YOU",
+      "note": "Verify whether coursework.create or coursework.patch behaves as expected under your target user account."
+    },
+    {
+      "stepNumber": 2,
+      "text": "Enable Google Classroom API in the Google Cloud Console.",
+      "owner": "YOU",
+      "portalUrl": "https://console.cloud.google.com/apis/library/classroom.googleapis.com"
+    },
+    {
+      "stepNumber": 3,
+      "text": "Configure OAuth Consent Screen under Branding & Data Access.",
+      "owner": "YOU",
+      "portalUrl": "https://console.cloud.google.com/auth/scopes",
+      "fields": [
+        { "name": "classroom.courses.readonly", "action": "fill", "note": "Read-only access to courses" },
+        { "name": "classroom.coursework.students", "action": "watch", "note": "Restricted scope requiring full verification + capability constraints" }
+      ]
+    }
+  ],
+  "scopes": [
+    { "scope": "classroom.courses.readonly", "triggersReview": true, "tier": "restricted", "note": "Restricted — Google verification required" },
+    { "scope": "classroom.coursework.students", "triggersReview": true, "tier": "restricted", "note": "Restricted — Write limits strictly enforced" }
+  ],
+  "blockers": [
+    {
+      "class": "capability",
+      "issue": "API Write Ceiling: Applications cannot modify coursework created natively by the teacher or other projects. 'Syncing my app's student submissions directly into teacher-created assignments' is blocked by API design.",
+      "workaround": "Architect your app so it creates its own custom coursework containers, or require teachers to initiate all assignment templates through your integration.",
+      "severity": "fatal"
+    },
+    {
+      "class": "approval",
+      "issue": "Coursework scopes are classified as restricted by Google, triggering an extensive compliance review before public accounts can connect.",
+      "workaround": "Test with up to 100 whitelisted teacher accounts in dev mode while pursuing compliance.",
+      "severity": "high"
+    }
+  ],
+  "composio": {
+    "managed": false,
+    "savedDays": 60,
+    "recommendation": "Managed auth layers can simplify token exchange, but NO auth provider can circumvent Google's API-level coursework write ceiling. Feasibility checks must come first.",
+    "link": "https://docs.composio.dev/toolkits/managed-auth",
+    "note": "A managed auth provider handles authentication, but cannot override provider business logic limitations."
+  },
+  "evidence": [
+    {
+      "claim": "At Agilo (PictoBlox × Google Classroom integration), the team completed full OAuth setup and doc reading, only to discover via Postman that the required write path was blocked for third-party coursework.",
+      "label": "TESTED",
+      "sourceUrl": null
+    },
+    {
+      "claim": "Classroom coursework can generally only be modified by the API project that created it; posting on a teacher's behalf requires their own credentials and scopes.",
+      "label": "SOURCED",
+      "sourceUrl": "https://developers.google.com/classroom/guides/manage-coursework"
+    }
+  ]
+}
