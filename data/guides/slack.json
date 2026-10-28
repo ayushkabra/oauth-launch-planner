@@ -16,9 +16,10 @@
   },
   "cost": "Free to register. Compliance, privacy auditing, and developer support infrastructure required.",
   "capabilityCheck": {
-    "question": "Can an agent send messages, read thread history, and listen to mentions?",
-    "verdict": "full",
-    "detail": "Slack has comprehensive bot APIs with webhooks, socket mode, and granular bot token scopes (chat:write, channels:history). No major capability ceiling for standard agent interactions."
+    "question": "Can an agent monitor channels and direct messages without manual user invitation?",
+    "verdict": "partial",
+    "detail": "Slack bots can ONLY read channels, threads, and mentions where the bot has been explicitly invited. A bot cannot silently monitor workspace channels or read direct messages without specialized user token scopes (im:read, groups:history) that trigger severe App Directory auditing and enterprise admin scrutiny.",
+    "warningCallout": "Agents cannot passively monitor Slack without explicit channel-by-channel invites (/invite @bot) by a human member."
   },
   "prerequisites": [
     "A Slack development workspace with admin permissions",
@@ -32,8 +33,16 @@
       "owner": "YOU",
       "portalUrl": "https://api.slack.com/apps",
       "fields": [
-        { "name": "App Name", "action": "fill", "valueOrAdvice": "e.g. Agent Workspace Assistant" },
-        { "name": "Pick a workspace to develop your app in", "action": "fill", "note": "Select your personal/team dev workspace." }
+        {
+          "name": "App Name",
+          "action": "fill",
+          "valueOrAdvice": "e.g. Agent Workspace Assistant"
+        },
+        {
+          "name": "Pick a workspace to develop your app in",
+          "action": "fill",
+          "note": "Select your personal/team dev workspace."
+        }
       ]
     },
     {
@@ -41,8 +50,17 @@
       "text": "Configure Bot Token Scopes under 'OAuth & Permissions'.",
       "owner": "AGENT+YOU",
       "fields": [
-        { "name": "Scopes → Bot Token Scopes", "action": "fill", "valueOrAdvice": "chat:write, channels:read, app_mentions:read", "note": "CRITICAL: Plan all scopes up front. Adding any new scope later restarts Slack's 10-week review queue." },
-        { "name": "Redirect URLs", "action": "fill", "note": "Add exact callback URL, e.g. https://yourapp.com/api/auth/callback/slack" }
+        {
+          "name": "Scopes → Bot Token Scopes",
+          "action": "fill",
+          "valueOrAdvice": "chat:write, channels:read, app_mentions:read",
+          "note": "CRITICAL: Plan all scopes up front. Adding any new scope later restarts Slack's 10-week review queue."
+        },
+        {
+          "name": "Redirect URLs",
+          "action": "fill",
+          "note": "Add exact callback URL, e.g. https://yourapp.com/api/auth/callback/slack"
+        }
       ]
     },
     {
@@ -56,15 +74,38 @@
       "text": "Activate Public Distribution under 'Manage Distribution'.",
       "owner": "YOU",
       "fields": [
-        { "name": "Remove Hardcoded Information", "action": "watch", "note": "Must ensure client secrets and bot tokens are not baked into code." },
-        { "name": "Submit to App Directory", "action": "watch", "note": "Requires active installations in at least 5 different external workspaces before the submit button unlocks." }
+        {
+          "name": "Remove Hardcoded Information",
+          "action": "watch",
+          "note": "Must ensure client secrets and bot tokens are not baked into code."
+        },
+        {
+          "name": "Submit to App Directory",
+          "action": "watch",
+          "note": "Requires active installations in at least 5 different external workspaces before the submit button unlocks."
+        }
       ]
     }
   ],
   "scopes": [
-    { "scope": "chat:write", "triggersReview": true, "tier": "sensitive", "note": "Allows sending messages as bot" },
-    { "scope": "channels:history", "triggersReview": true, "tier": "restricted", "note": "Reads public channel messages (thoroughly audited)" },
-    { "scope": "commands", "triggersReview": false, "tier": "non-sensitive", "note": "Slash commands" }
+    {
+      "scope": "chat:write",
+      "triggersReview": true,
+      "tier": "sensitive",
+      "note": "Allows sending messages as bot"
+    },
+    {
+      "scope": "channels:history",
+      "triggersReview": true,
+      "tier": "restricted",
+      "note": "Reads public channel messages (thoroughly audited)"
+    },
+    {
+      "scope": "commands",
+      "triggersReview": false,
+      "tier": "non-sensitive",
+      "note": "Slash commands"
+    }
   ],
   "blockers": [
     {
@@ -88,8 +129,8 @@
   },
   "evidence": [
     {
-      "claim": "Directly tested Slack app creation and verified that bot token works immediately within the home workspace, while distribution requires fulfilling directory criteria.",
-      "label": "TESTED",
+      "claim": "Slack bot tokens work immediately in the home workspace; public distribution requires meeting Slack's directory criteria and a review. (Documented, not personally tested.)",
+      "label": "SOURCED",
       "sourceUrl": "https://api.slack.com/apps"
     },
     {

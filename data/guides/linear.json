@@ -20,7 +20,9 @@
     "verdict": "full",
     "detail": "Linear has a high-performance GraphQL API. Full read and write capabilities are supported across issues, comments, roadmaps, and teams with no artificial capability ceiling."
   },
-  "prerequisites": ["A Linear workspace account"],
+  "prerequisites": [
+    "A Linear workspace account"
+  ],
   "steps": [
     {
       "stepNumber": 1,
@@ -28,8 +30,16 @@
       "owner": "YOU",
       "portalUrl": "https://linear.app/settings/api",
       "fields": [
-        { "name": "Application name", "action": "fill", "valueOrAdvice": "e.g. Agent Linear Sync" },
-        { "name": "Callback URLs", "action": "fill", "valueOrAdvice": "https://yourapp.com/api/auth/callback/linear" }
+        {
+          "name": "Application name",
+          "action": "fill",
+          "valueOrAdvice": "e.g. Agent Linear Sync"
+        },
+        {
+          "name": "Callback URLs",
+          "action": "fill",
+          "valueOrAdvice": "https://yourapp.com/api/auth/callback/linear"
+        }
       ]
     },
     {
@@ -37,7 +47,11 @@
       "text": "Select Scopes (read, write, issues:create, comments:create).",
       "owner": "AGENT+YOU",
       "fields": [
-        { "name": "Scopes", "action": "fill", "note": "Linear scopes are clear and grant immediate workspace access without manual approval." }
+        {
+          "name": "Scopes",
+          "action": "fill",
+          "note": "Linear scopes are clear and grant immediate workspace access without manual approval."
+        }
       ]
     },
     {
@@ -48,9 +62,24 @@
     }
   ],
   "scopes": [
-    { "scope": "read", "triggersReview": false, "tier": "non-sensitive", "note": "Read issues, teams, users" },
-    { "scope": "write", "triggersReview": false, "tier": "sensitive", "note": "Update issues and projects" },
-    { "scope": "issues:create", "triggersReview": false, "tier": "non-sensitive", "note": "Create new issues" }
+    {
+      "scope": "read",
+      "triggersReview": false,
+      "tier": "non-sensitive",
+      "note": "Read issues, teams, users"
+    },
+    {
+      "scope": "write",
+      "triggersReview": false,
+      "tier": "sensitive",
+      "note": "Update issues and projects"
+    },
+    {
+      "scope": "issues:create",
+      "triggersReview": false,
+      "tier": "non-sensitive",
+      "note": "Create new issues"
+    }
   ],
   "blockers": [
     {
@@ -68,8 +97,8 @@
   },
   "evidence": [
     {
-      "claim": "Linear supports public OAuth 2.0 without review gates; users can authorize instantly.",
-      "label": "TESTED",
+      "claim": "Linear supports public OAuth 2.0 without a review gate; users can authorize instantly.",
+      "label": "SOURCED",
       "sourceUrl": "https://developers.linear.app/docs/graphql/working-with-the-graphql-api"
     }
   ]

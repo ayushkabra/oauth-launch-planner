@@ -53,7 +53,7 @@ Composio explicitly grades "judgment about evidence." We reject hallucinated doc
 2. `SOURCED`: Verified against official, code-controlled developer documentation.
    * *Example*: Slack's 10-week App Directory review policy and 5-workspace installation threshold ([api.slack.com/docs/distribution](https://api.slack.com/docs/distribution)).
    * *Example*: Microsoft Entra publisher verification and MPN D-U-N-S requirements ([learn.microsoft.com](https://learn.microsoft.com/en-us/entra/identity-platform/publisher-verification-overview)).
-3. `INFERRED`: Derived algorithmically by the Live Agent Investigator based on live endpoint discovery.
+3. `INFERRED`: Reasoned by the Live Agent Investigator from related documentation during live research (not directly stated on a source page).
 4. `UNVERIFIED`: Explicitly flagged when provider policies are undocumented or unconfirmed.
 
 ---
@@ -90,12 +90,12 @@ Composio explicitly grades "judgment about evidence." We reject hallucinated doc
 | **Slack** | `gated` | ~30 min | 8–10 weeks | `SOURCED` Review Restarts: adding 1 scope restarts 10-week queue; 5-workspace gate. |
 | **Microsoft Graph** | `gated` | ~45 min | 3–6 weeks | `SOURCED` Governance Gate: Azure AD multi-tenant & Enterprise Admin Consent. |
 | **Spotify** | `moderate` | ~15 min | 2–4 weeks | `SOURCED` Quota Cap: 25-user whitelist dev limit until Quota Extension approval. |
-| **Linear** | `trivial` | ~15 min | Same day (0 days) | `TESTED` Modern Developer-First OAuth 2.0 baseline. |
+| **Linear** | `trivial` | ~15 min | Same day (0 days) | `SOURCED` Modern Developer-First OAuth 2.0 baseline. |
 | **Twitter (X)** | `gated` | ~30 min | Immediate with $$ | `SOURCED` Paywall Ceiling: Free tier has zero read/search; Basic tier is $100/mo. |
-| **Jotform** | `trivial` | ~5 min | Immediate | `TESTED` Honest Detection: No OAuth exists (API Key only). |
+| **Jotform** | `trivial` | ~5 min | Immediate | `SOURCED` Honest Detection: No OAuth exists (API Key only). |
 | **Notion** | `moderate` | ~15 min | 1–2 days | `SOURCED` Setup Fork: Internal vs Public integration switch. |
 | **HubSpot** | `moderate` | ~20 min | 7–14 days | `SOURCED` Setup Requirement: Dedicated Developer Account + child Test Portals. |
-| **Discord** | `moderate` | ~20 min | Immediate (&lt;100 servers) | `SOURCED` Privileged Gateway Intents (Message Content Intent). |
+| **Discord** | `moderate` | ~20 min | Immediate (<100 servers) | `SOURCED` Privileged Gateway Intents (Message Content Intent). |
 | **Airtable** | `moderate` | ~20 min | Immediate | `SOURCED` Protocol Requirement: Strict OAuth 2.0 with PKCE SHA-256. |
 
 ---
@@ -118,6 +118,9 @@ npm run dev
 
 ## 7. Known Limitations & Future Roadmap
 
-1. **Simulated Crawl in Client-Only Mode**: In the standalone browser version, the live investigator utilizes an indexed discovery matrix and real-time step streaming. In the full Next.js server mode (`app/api/generate/route.ts`), this connects to active web scraping agents.
+1. **Two investigator modes — stated honestly**:
+   * **Next.js server mode (the real agent)** — `app/api/generate/route.ts` → `lib/agent-investigator.ts` calls an LLM with a hosted **web-search tool** that reads the provider's official OAuth docs and returns a guide validated against the Zod schema, with a research trail built from the **actual searches run**. Requires `OPENAI_API_KEY` (see `.env.example`). This is the mode for a live demo — run `npm run dev` or deploy to Vercel with the key set.
+   * **Standalone `index.html` (offline demo)** — a zero-install single file for clicking through the UI and the static library. Its investigator is a **scripted demo over a curated knowledge base, not live research** — generated guides there are shown as illustrative only. Use the server mode for real, unfamiliar apps.
+   * Note: GitHub Pages serves only the static `index.html`; it cannot run the API route, so the live agent is available on the Next.js deployment, not on the Pages URL.
 2. **Provider Portal UI Drift**: Major providers (especially Google Cloud Console and Azure AD) redesign their consoles frequently (e.g. Google renaming "Scopes" to "Data Access"). A future version would incorporate community version-stamped screenshots.
 3. **Automated CASA Pre-Auditor**: An upcoming feature for the Composio toolkit could parse an agent's required scopes and calculate the exact CASA Tier and questionnaire responses required for compliance.

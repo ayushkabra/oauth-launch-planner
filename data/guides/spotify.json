@@ -16,11 +16,15 @@
   },
   "cost": "Free",
   "capabilityCheck": {
-    "question": "Can an agent control playback and modify user playlists?",
-    "verdict": "full",
-    "detail": "Playback control and playlist creation work well with active Spotify Premium accounts. Note: Spotify's terms strictly prohibit using metadata or user listening histories for LLM model training."
+    "question": "Can an agent freely stream audio or ingest music metadata for LLM analysis?",
+    "verdict": "partial",
+    "detail": "Playback control and playlist creation work well with active Spotify Premium accounts. However, Spotify's Developer Terms strictly prohibit using API data, lyrics, or listening history for LLM model training. Furthermore, dev mode is hard-capped at 25 whitelisted Spotify accounts until Quota Extension is approved.",
+    "warningCallout": "AI agent builders cannot train models or cache catalog data per Spotify terms; playback requires users to hold active Spotify Premium."
   },
-  "prerequisites": ["A Spotify Developer account", "Active Spotify Premium account for testing playback controls"],
+  "prerequisites": [
+    "A Spotify Developer account",
+    "Active Spotify Premium account for testing playback controls"
+  ],
   "steps": [
     {
       "stepNumber": 1,

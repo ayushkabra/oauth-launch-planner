@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { investigateAppLive } from "@/lib/agent-investigator";
 
+// The live agent does real web search + an LLM call, so give it room.
+export const runtime = "nodejs";
+export const maxDuration = 120;
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

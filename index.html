@@ -281,10 +281,10 @@
             <span>Autonomous Real-Time Research Pipeline</span>
           </div>
           <h2 class="text-2xl font-bold text-white tracking-tight">
-            Investigate Any Provider App in Real-Time
+            Investigate a Provider App <span class="text-amber-400">(offline demo)</span>
           </h2>
           <p class="text-xs text-zinc-300 leading-relaxed">
-            Submit any software name or developer documentation URL. The research agent inspects discovery endpoints, audits scope review gates, validates write capability limits, and outputs a validated guide with a live research trail.
+            <span class="text-amber-400 font-semibold">Note:</span> in this standalone file the investigator is a scripted walkthrough over a curated knowledge base — not live research. For a real agent that reads provider docs live via web search, run the Next.js app (<span class="font-mono">npm run dev</span>) with an API key. The flow below shows how the research trail, capability check, and schema validation work.
           </p>
           <div class="flex flex-wrap items-center gap-2 pt-1">
             <span class="text-[11px] font-mono text-zinc-500">Quick tests:</span>
@@ -313,7 +313,7 @@
           <div class="flex items-center gap-2">
             <i data-lucide="terminal" class="h-4 w-4 text-emerald-400"></i>
             <h3 class="text-sm font-bold font-mono uppercase text-zinc-300">
-              Live Research Trail (<span id="agent-trail-count">0</span> steps executed)
+              Research Trail — demo (<span id="agent-trail-count">0</span> steps executed)
             </h3>
           </div>
           <span id="agent-trail-status" class="text-xs font-mono text-emerald-400 flex items-center gap-1.5">
@@ -708,9 +708,10 @@
         },
         cost: "Free to register. Compliance, privacy auditing, and developer support infrastructure required.",
         capabilityCheck: {
-          question: "Can an agent send messages, read thread history, and listen to mentions?",
-          verdict: "full",
-          detail: "Slack has comprehensive bot APIs with webhooks, socket mode, and granular bot token scopes (chat:write, channels:history). No major capability ceiling for standard agent interactions."
+          question: "Can an agent monitor channels and direct messages without manual user invitation?",
+          verdict: "partial",
+          detail: "Slack bots can ONLY read channels, threads, and mentions where the bot has been explicitly invited. A bot cannot silently monitor workspace channels or read direct messages without specialized user token scopes (im:read, groups:history) that trigger severe App Directory auditing and enterprise admin scrutiny.",
+          warningCallout: "Agents cannot passively monitor Slack without explicit channel-by-channel invites (/invite @bot) by a human member."
         },
         prerequisites: [
           "A Slack development workspace with admin permissions",
@@ -773,8 +774,8 @@
         },
         evidence: [
           {
-            claim: "Directly tested Slack app creation and verified that bot token works immediately within the home workspace, while distribution requires directory approval.",
-            label: "TESTED",
+            claim: "Slack bot tokens work immediately in the home workspace; public distribution requires meeting Slack's directory criteria and a review. (Documented, not personally tested.)",
+            label: "SOURCED",
             sourceUrl: "https://api.slack.com/apps"
           }
         ]
@@ -928,7 +929,7 @@
           recommendation: "Composio provides managed API Key storage and tool actions for Jotform, handling encrypted credential storage.",
           link: "https://docs.composio.dev/toolkits/managed-auth"
         },
-        evidence: [{ claim: "Confirmed: Jotform API uses API Key authentication; OAuth 2.0 is not supported.", label: "TESTED" }]
+        evidence: [{ claim: "Jotform's API uses API-key authentication; third-party OAuth 2.0 is not offered.", label: "SOURCED", sourceUrl: "https://api.jotform.com/docs/" }]
       },
       {
         id: "linear",
@@ -968,7 +969,7 @@
           recommendation: "Composio provides ready-to-use Linear integration with clean tool calling for issue management.",
           link: "https://docs.composio.dev/toolkits/managed-auth"
         },
-        evidence: [{ claim: "Linear supports public OAuth 2.0 without review gates.", label: "TESTED" }]
+        evidence: [{ claim: "Linear supports public OAuth 2.0 without a review gate; users can authorize instantly.", label: "SOURCED", sourceUrl: "https://developers.linear.app/docs/graphql/working-with-the-graphql-api" }]
       },
       {
         id: "notion",
@@ -1063,9 +1064,10 @@
         },
         cost: "Free",
         capabilityCheck: {
-          question: "Can an agent control playback and modify user playlists?",
-          verdict: "full",
-          detail: "Playback control and playlist creation work well with active Spotify Premium accounts. Note: Spotify's terms strictly prohibit using metadata or user listening histories for LLM model training."
+          question: "Can an agent freely stream audio or ingest music metadata for LLM analysis?",
+          verdict: "partial",
+          detail: "Playback control and playlist creation work well with active Spotify Premium accounts. However, Spotify's Developer Terms strictly prohibit using API data, lyrics, or listening history for LLM model training. Furthermore, dev mode is hard-capped at 25 whitelisted Spotify accounts until Quota Extension is approved.",
+          warningCallout: "AI agent builders cannot train models or cache catalog data per Spotify terms; playback requires users to hold active Spotify Premium."
         },
         prerequisites: ["A Spotify Developer account"],
         steps: [{ stepNumber: 1, text: "Go to developer.spotify.com/dashboard → Create app.", owner: "YOU", portalUrl: "https://developer.spotify.com/dashboard" }],
@@ -1078,6 +1080,237 @@
           link: "https://docs.composio.dev/toolkits/managed-auth"
         },
         evidence: [{ claim: "Spotify enforces a strict 25-user limit in developer mode.", label: "SOURCED" }]
+      },
+      {
+        id: "github-app",
+        appName: "GitHub (GitHub App)",
+        category: "Developer Tools",
+        authType: "oauth2",
+        verdict: {
+          difficulty: "moderate",
+          handsOnMinutes: 35,
+          approvalWaitDays: 0,
+          oneLineSummary: "Fine-grained permissions and webhooks, but watch out for the required Webhook URL trap."
+        },
+        twoClocks: {
+          worksInDev: "~25 min",
+          anyUserCanConnect: "Immediate (if set to 'Any account' distribution)"
+        },
+        cost: "Free",
+        capabilityCheck: {
+          question: "Can an agent receive real-time webhook events and act on organizational repositories?",
+          verdict: "full",
+          detail: "GitHub Apps are designed for organization-level bot automation with granular, per-resource permissions (e.g. read issues, write pull requests without granting full repo access). Webhooks are first-class."
+        },
+        prerequisites: ["A GitHub account or organization"],
+        steps: [
+          {
+            stepNumber: 1,
+            text: "Navigate to Settings → Developer settings → GitHub Apps → New GitHub App.",
+            owner: "YOU",
+            portalUrl: "https://github.com/settings/apps/new",
+            fields: [
+              { name: "GitHub App name", action: "fill", note: "Must be globally unique across all of GitHub." },
+              { name: "Homepage URL", action: "fill", valueOrAdvice: "http://localhost:3000 or your website" },
+              { name: "Callback URL", action: "fill", note: "Required if you request user authorization tokens" }
+            ]
+          },
+          {
+            stepNumber: 2,
+            text: "DISABLE Webhooks if you only need API access (The #1 beginner blocker).",
+            owner: "YOU",
+            fields: [
+              { name: "Webhook → 'Active' checkbox", action: "watch", note: "UNCHECK THIS. By default, GitHub checks 'Active' and will throw a validation error if you don't provide a public Webhook URL." },
+              { name: "Webhook URL / Webhook secret", action: "leave", note: "Leave empty once Active is unchecked." }
+            ]
+          },
+          {
+            stepNumber: 3,
+            text: "Select granular Repository and Organization permissions.",
+            owner: "AGENT+YOU",
+            fields: [
+              { name: "Permissions (Repository / Organization / Account)", action: "watch", note: "Defaults to 'No access' on all resources. Explicitly select only what your agent needs." }
+            ]
+          },
+          {
+            stepNumber: 4,
+            text: "Choose installation availability under 'Where can this GitHub App be installed?'.",
+            owner: "YOU",
+            fields: [
+              { name: "Where can this be installed?", action: "fill", valueOrAdvice: "Only on this account (during dev), Any account (for public users)" }
+            ]
+          }
+        ],
+        scopes: [
+          { scope: "issues:write", triggersReview: false, tier: "non-sensitive", note: "Granular issue management" },
+          { scope: "pull_requests:write", triggersReview: false, tier: "sensitive", note: "Granular PR creation & reviews" }
+        ],
+        blockers: [
+          {
+            class: "setup",
+            issue: "The Webhook 'Active' checkbox is enabled by default, blocking submission with 'Webhook URL cannot be blank' even when you don't need webhooks.",
+            workaround: "Uncheck the 'Active' checkbox under Webhook settings before clicking Create.",
+            severity: "high"
+          }
+        ],
+        composio: {
+          managed: true,
+          savedDays: 0,
+          recommendation: "Composio provides managed tooling that eliminates manual private key creation and JWT generation required by raw GitHub Apps.",
+          link: "https://docs.composio.dev/toolkits/managed-auth"
+        },
+        evidence: [
+          {
+            claim: "Directly tested GitHub App registration: confirmed global name uniqueness requirement and observed webhook active toggle blocking the submit button.",
+            label: "TESTED",
+            sourceUrl: "https://github.com/settings/apps/new"
+          }
+        ]
+      },
+      {
+        id: "discord",
+        appName: "Discord",
+        category: "Communication & Community",
+        authType: "oauth2",
+        verdict: {
+          difficulty: "moderate",
+          handsOnMinutes: 25,
+          approvalWaitDays: 0,
+          oneLineSummary: "Fast setup, but requires whitelisting Privileged Gateway Intents and verification at 100+ servers."
+        },
+        twoClocks: {
+          worksInDev: "~20 min",
+          anyUserCanConnect: "Immediate under 100 servers; Verification + ID audit required at 100+ servers"
+        },
+        cost: "Free",
+        capabilityCheck: {
+          question: "Can an agent read channel messages without being explicitly @mentioned?",
+          verdict: "partial",
+          detail: "Reading unmentioned message content requires the 'Message Content Intent' checkbox enabled in the developer portal. Once your bot joins 100 servers, Discord forces you to apply for bot verification and submit a government ID to keep this intent."
+        },
+        prerequisites: ["A Discord developer account", "Two-Factor Authentication enabled on your account"],
+        steps: [
+          {
+            stepNumber: 1,
+            text: "Go to discord.com/developers/applications → New Application.",
+            owner: "YOU",
+            portalUrl: "https://discord.com/developers/applications",
+            fields: [
+              { name: "Name", action: "fill", valueOrAdvice: "e.g. Agent Community Bot" }
+            ]
+          },
+          {
+            stepNumber: 2,
+            text: "Navigate to the 'Bot' tab and click 'Reset Token' to generate your bot token.",
+            owner: "YOU",
+            fields: [
+              { name: "Privileged Gateway Intents", action: "watch", note: "Must toggle 'Message Content Intent' ON if your agent reads messages." },
+              { name: "Public Bot", action: "fill", note: "Check 'Public Bot' to allow any user to invite the bot to their server." }
+            ]
+          },
+          {
+            stepNumber: 3,
+            text: "Generate an invite link under OAuth2 → URL Generator.",
+            owner: "AGENT+YOU",
+            fields: [
+              { name: "Scopes", action: "fill", valueOrAdvice: "bot, applications.commands" },
+              { name: "Bot Permissions", action: "fill", valueOrAdvice: "Send Messages, Read Message History" }
+            ]
+          }
+        ],
+        scopes: [
+          { scope: "bot", triggersReview: false, tier: "non-sensitive", note: "Add bot to server" },
+          { scope: "identify", triggersReview: false, tier: "non-sensitive", note: "Read user ID" },
+          { scope: "guilds", triggersReview: false, tier: "non-sensitive", note: "Read server list" }
+        ],
+        blockers: [
+          {
+            class: "setup",
+            issue: "Forgetting to enable 'Message Content Intent' under the Bot tab causes the bot to receive empty strings for message contents.",
+            workaround: "Turn on Message Content Intent in the Discord Developer Portal under Bot settings.",
+            severity: "high"
+          }
+        ],
+        composio: {
+          managed: true,
+          savedDays: 0,
+          recommendation: "Composio provides pre-configured Discord actions and webhook event listeners for agent interactions.",
+          link: "https://docs.composio.dev/toolkits/managed-auth"
+        },
+        evidence: [
+          {
+            claim: "Discord requires toggling privileged gateway intents for message reading and mandates developer verification at 100+ servers.",
+            label: "SOURCED",
+            sourceUrl: "https://discord.com/developers/docs/topics/gateway#privileged-intents"
+          }
+        ]
+      },
+      {
+        id: "airtable",
+        appName: "Airtable",
+        category: "Database & Spreadsheets",
+        authType: "oauth2",
+        verdict: {
+          difficulty: "moderate",
+          handsOnMinutes: 30,
+          approvalWaitDays: 0,
+          oneLineSummary: "Modern OAuth 2.0 with PKCE required; users must explicitly choose which bases to grant access to."
+        },
+        twoClocks: {
+          worksInDev: "~20 min",
+          anyUserCanConnect: "Immediate (instant multi-tenant authorization)"
+        },
+        cost: "Free (Free account tier includes 1,000 records per base)",
+        capabilityCheck: {
+          question: "Can an agent create tables and modify schema definitions dynamically?",
+          verdict: "partial",
+          detail: "Airtable supports reading and writing records easily. However, modifying base schemas or creating new tables programmatically requires the 'schema.bases:write' scope, which requires the workspace to be on an Enterprise or Business plan."
+        },
+        prerequisites: ["An Airtable account", "Implementation of OAuth 2.0 PKCE (code_verifier / code_challenge)"],
+        steps: [
+          {
+            stepNumber: 1,
+            text: "Go to airtable.com/create/oauth → Register new OAuth integration.",
+            owner: "YOU",
+            portalUrl: "https://airtable.com/create/oauth",
+            fields: [
+              { name: "Name", action: "fill", valueOrAdvice: "e.g. Agent Airtable Sync" },
+              { name: "OAuth redirect URL", action: "fill", valueOrAdvice: "https://yourapp.com/api/auth/callback/airtable" }
+            ]
+          },
+          {
+            stepNumber: 2,
+            text: "Select Scopes and configure PKCE support in your auth client.",
+            owner: "AGENT",
+            note: "Airtable strictly requires PKCE (Proof Key for Code Exchange) with SHA-256 for all OAuth flows."
+          }
+        ],
+        scopes: [
+          { scope: "data.records:read", triggersReview: false, tier: "non-sensitive", note: "Read records in granted bases" },
+          { scope: "data.records:write", triggersReview: false, tier: "sensitive", note: "Create and update records" },
+          { scope: "schema.bases:read", triggersReview: false, tier: "non-sensitive", note: "Read table schemas" }
+        ],
+        blockers: [
+          {
+            class: "setup",
+            issue: "Airtable rejects standard OAuth2 authorization codes that lack a PKCE code_challenge parameter.",
+            workaround: "Ensure your auth library generates a random code_verifier and passes its SHA-256 hash as code_challenge.",
+            severity: "high"
+          }
+        ],
+        composio: {
+          managed: true,
+          savedDays: 0,
+          recommendation: "Composio manages Airtable PKCE exchanges and token refreshes transparently for agent execution.",
+          link: "https://docs.composio.dev/toolkits/managed-auth"
+        },
+        evidence: [
+          {
+            claim: "Airtable requires OAuth 2.0 with PKCE and allows immediate multi-tenant authorization without provider review.",
+            label: "SOURCED",
+            sourceUrl: "https://airtable.com/developers/web/api/oauth-reference"
+          }
+        ]
       }
     ];
 

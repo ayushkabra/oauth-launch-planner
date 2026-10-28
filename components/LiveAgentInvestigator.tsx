@@ -2,8 +2,7 @@
 
 import React, { useState } from "react";
 import { Guide } from "@/lib/schema";
-import {
-  investigateAppLive,
+import type {
   ResearchTrailItem,
   LiveInvestigationResult,
 } from "@/lib/agent-investigator";
@@ -48,14 +47,41 @@ export const LiveAgentInvestigator: React.FC<LiveAgentInvestigatorProps> = ({
     setResult(null);
 
     try {
-      const res = await investigateAppLive(target, (step) => {
-        setTrail((prev) => [...prev, step]);
+      // Call the server route so the API key stays server-side (never in the browser).
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: target }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Investigation failed");
 
-      setResult(res);
-      onGuideGenerated(res.guide);
-    } catch (err) {
-      console.error("Investigation failed:", err);
+      // Replay the REAL research trail progressively for a live feel.
+      const steps: ResearchTrailItem[] = data.trail || [];
+      for (const step of steps) {
+        setTrail((prev) => [...prev, step]);
+        await new Promise((r) => setTimeout(r, 450));
+      }
+
+      const final: LiveInvestigationResult = {
+        guide: data.guide,
+        trail: steps,
+        confidenceScore: data.confidenceScore ?? 0,
+      };
+      setResult(final);
+      onGuideGenerated(final.guide);
+    } catch (err: any) {
+      setTrail((prev) => [
+        ...prev,
+        {
+          id: `err-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          type: "verdict",
+          title: "Live research unavailable",
+          detail: err?.message || "Request failed. Is OPENAI_API_KEY set on the server?",
+          status: "warning",
+        },
+      ]);
     } finally {
       setIsRunning(false);
     }

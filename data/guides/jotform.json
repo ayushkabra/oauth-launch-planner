@@ -20,7 +20,9 @@
     "verdict": "full",
     "detail": "Jotform's REST API is fully functional for creating forms and reading submissions using an API Key. However, because there is NO OAuth 2.0 flow, you cannot offer a 1-click 'Connect with Jotform' popup. Your agent must prompt the user to paste an API Key."
   },
-  "prerequisites": ["A Jotform account"],
+  "prerequisites": [
+    "A Jotform account"
+  ],
   "steps": [
     {
       "stepNumber": 1,
@@ -28,8 +30,16 @@
       "owner": "YOU",
       "portalUrl": "https://www.jotform.com/myaccount/api",
       "fields": [
-        { "name": "Key Name", "action": "fill", "valueOrAdvice": "e.g. Agent Access Key" },
-        { "name": "Permissions", "action": "watch", "note": "Defaults to 'Read Access'. Switch to 'Full Access' if your agent needs to create or modify forms." }
+        {
+          "name": "Key Name",
+          "action": "fill",
+          "valueOrAdvice": "e.g. Agent Access Key"
+        },
+        {
+          "name": "Permissions",
+          "action": "watch",
+          "note": "Defaults to 'Read Access'. Switch to 'Full Access' if your agent needs to create or modify forms."
+        }
       ]
     },
     {
@@ -56,8 +66,8 @@
   },
   "evidence": [
     {
-      "claim": "Confirmed from official Jotform documentation: Jotform API uses API Key authentication; OAuth 2.0 is not supported.",
-      "label": "TESTED",
+      "claim": "Jotform's API uses API-key authentication; third-party OAuth 2.0 is not offered.",
+      "label": "SOURCED",
       "sourceUrl": "https://api.jotform.com/docs/"
     }
   ]

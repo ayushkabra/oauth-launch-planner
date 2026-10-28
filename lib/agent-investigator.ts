@@ -13,377 +13,187 @@ export interface ResearchTrailItem {
 export interface LiveInvestigationResult {
   guide: Guide;
   trail: ResearchTrailItem[];
-  confidenceScore: number;
+  confidenceScore: number; // 0-100, derived from real sources found
 }
 
-// Built-in intelligent knowledge bases for on-the-fly deep generation of common uncataloged apps
-const KNOWN_PLATFORM_SPECS: Record<string, Partial<Guide>> = {
-  salesforce: {
-    appName: "Salesforce",
-    category: "CRM & Enterprise",
-    authType: "oauth2",
-    verdict: {
-      difficulty: "gated",
-      handsOnMinutes: 60,
-      approvalWaitDays: 45,
-      oneLineSummary: "Requires Connected App setup in Setup console; AppExchange distribution requires extensive security review ($2,700 annual fee).",
-    },
-    twoClocks: {
-      worksInDev: "~45 min (Developer Edition Org)",
-      anyUserCanConnect: "4–8 weeks (AppExchange Security Review + $2,700 review fee)",
-    },
-    cost: "$2,700 AppExchange security review fee for paid apps; free for internal or unlisted use.",
-    capabilityCheck: {
-      question: "Can an agent execute SOQL queries and update standard and custom objects?",
-      verdict: "full",
-      detail: "Full read and write capabilities across standard (Leads, Contacts, Opportunities) and custom objects via REST/SOQL APIs.",
-    },
-    prerequisites: ["A Salesforce Developer Edition organization", "System Administrator permissions"],
-    steps: [
-      {
-        stepNumber: 1,
-        text: "Log into Salesforce Setup → App Manager → New Connected App.",
-        owner: "YOU",
-        portalUrl: "https://login.salesforce.com",
-        fields: [
-          { name: "Connected App Name / API Name", action: "fill" },
-          { name: "Contact Email", action: "fill" },
-          { name: "Enable OAuth Settings", action: "watch", note: "Check this box to expose OAuth options." },
-          { name: "Callback URL", action: "fill", valueOrAdvice: "https://yourapp.com/api/auth/callback/salesforce" },
-        ],
-      },
-      {
-        stepNumber: 2,
-        text: "Select OAuth Scopes (Manage user data via APIs, Perform requests at any time).",
-        owner: "AGENT+YOU",
-      },
-    ],
-    blockers: [
-      {
-        class: "approval",
-        issue: "AppExchange distribution requires a mandatory security review and $2,700 annual review fee.",
-        workaround: "Use direct Connected App installation links or Composio Managed Auth.",
-        severity: "fatal",
-      },
-      {
-        class: "setup",
-        issue: "Newly created Connected Apps take 2–10 minutes to propagate across Salesforce datacenters (initial logins may fail with invalid_client).",
-        workaround: "Wait 10 minutes after clicking Save before testing the OAuth flow.",
-        severity: "medium",
-      },
-    ],
-    composio: {
-      managed: true,
-      savedDays: 45,
-      recommendation: "Salesforce Connected App management and token refresh handling is fully automated in Composio Managed Auth.",
-      link: "https://docs.composio.dev/toolkits/managed-auth",
-    },
-    evidence: [
-      {
-        claim: "Salesforce AppExchange mandates security review and documentation for public marketplace apps.",
-        label: "SOURCED",
-        sourceUrl: "https://developer.salesforce.com/docs/atlas.en-us.packagingGuide.meta/packagingGuide/security_review_overview.htm",
-      },
-    ],
-  },
-  stripe: {
-    appName: "Stripe",
-    category: "Payments & Commerce",
-    authType: "oauth2",
-    verdict: {
-      difficulty: "moderate",
-      handsOnMinutes: 30,
-      approvalWaitDays: 0,
-      oneLineSummary: "Stripe Connect OAuth for multi-tenant accounts is instant in test mode; public live mode requires business verification.",
-    },
-    twoClocks: {
-      worksInDev: "~15 min (Stripe Test Mode with instant Connect keys)",
-      anyUserCanConnect: "Immediate for Standard Connect; 1–3 days for Express platform review",
-    },
-    cost: "Free setup; standard Stripe payment processing transaction fees apply.",
-    capabilityCheck: {
-      question: "Can an agent create charges, issue refunds, and inspect customer billing?",
-      verdict: "full",
-      detail: "Stripe has one of the world's most mature REST APIs with granular restricted API keys and Connect webhooks.",
-    },
-    prerequisites: ["A Stripe developer account with active test mode"],
-    steps: [
-      {
-        stepNumber: 1,
-        text: "Go to dashboard.stripe.com/settings/connect → Platform settings.",
-        owner: "YOU",
-        portalUrl: "https://dashboard.stripe.com/settings/connect",
-        fields: [
-          { name: "Redirect URIs", action: "fill", valueOrAdvice: "https://yourapp.com/api/auth/callback/stripe" },
-          { name: "OAuth Settings", action: "watch", note: "Must toggle OAuth on for Standard accounts under integration settings." },
-        ],
-      },
-    ],
-    blockers: [
-      {
-        class: "setup",
-        issue: "Connect OAuth is disabled by default in new Stripe accounts.",
-        workaround: "Explicitly enable OAuth in Settings → Connect → Integration Settings.",
-        severity: "medium",
-      },
-    ],
-    composio: {
-      managed: true,
-      savedDays: 0,
-      recommendation: "Composio provides managed Stripe tool execution with verified test and live mode switching.",
-      link: "https://docs.composio.dev/toolkits/managed-auth",
-    },
-    evidence: [
-      {
-        claim: "Stripe Connect supports immediate multi-tenant OAuth onboarding for Standard accounts.",
-        label: "SOURCED",
-        sourceUrl: "https://stripe.com/docs/connect/oauth-reference",
-      },
-    ],
-  },
-};
+// ---------------------------------------------------------------------------
+// REAL live investigator.
+// Calls an LLM with a hosted web-search tool, has it read the provider's OAuth
+// docs, and returns a guide validated against our Zod schema. The research
+// trail is built from the ACTUAL searches the model ran — not a scripted
+// animation. Evidence is never labelled TESTED here: only a human who performs
+// the setup can award TESTED. The model may use SOURCED / INFERRED / UNVERIFIED.
+// ---------------------------------------------------------------------------
+
+const OPENAI_API_URL = "https://api.openai.com/v1/responses";
+const MODEL = process.env.OPENAI_MODEL || "gpt-4o";
+// Hosted web-search tool name. "web_search_preview" has the broadest
+// availability; newer accounts can set OPENAI_WEBSEARCH_TOOL=web_search.
+const WEBSEARCH_TOOL = process.env.OPENAI_WEBSEARCH_TOOL || "web_search_preview";
+
+const SCHEMA_SPEC = `Return ONLY a JSON object (no markdown fences) with EXACTLY this shape:
+{
+  "appName": string,
+  "category": string,
+  "authType": "oauth2" | "oauth1" | "api_key" | "none",
+  "verdict": { "difficulty": "trivial"|"moderate"|"hard"|"gated", "handsOnMinutes": number, "approvalWaitDays": number, "oneLineSummary": string },
+  "twoClocks": { "worksInDev": string, "anyUserCanConnect": string },
+  "cost": string,
+  "capabilityCheck": { "question": string, "verdict": "full"|"partial"|"blocked"|"not_applicable", "detail": string },
+  "prerequisites": string[],
+  "steps": [ { "stepNumber": number, "text": string, "owner": "YOU"|"AGENT"|"AGENT+YOU", "portalUrl": string|null, "fields": [ { "name": string, "action": "fill"|"leave"|"watch", "valueOrAdvice"?: string, "note"?: string } ] } ],
+  "scopes": [ { "scope": string, "triggersReview": boolean, "tier"?: "non-sensitive"|"sensitive"|"restricted"|"admin", "note"?: string } ],
+  "blockers": [ { "class": "setup"|"approval"|"capability", "issue": string, "workaround": string, "severity": "low"|"medium"|"high"|"fatal" } ],
+  "composio": { "managed": boolean, "recommendation": string, "savedDays": number, "link": "https://docs.composio.dev/toolkits/managed-auth", "note"?: string },
+  "evidence": [ { "claim": string, "label": "SOURCED"|"INFERRED"|"UNVERIFIED", "sourceUrl": string|null } ]
+}`;
+
+const SYSTEM_PROMPT = `You are an OAuth setup investigator for developers building AI agents.
+Given an app name or docs URL, use web search to read the provider's OFFICIAL developer
+documentation and determine, for that provider's OAuth app:
+- the registration steps (which console, which fields), and for each important field whether to FILL / LEAVE / WATCH;
+- scopes and which ones trigger a review;
+- the path to "any user can connect" (verification/review) and realistic timelines;
+- the CAPABILITY CHECK first: can an agent actually do the needed read/write, or is the API read-only / capped / gated? If the app has no third-party OAuth (API keys only), set authType accordingly and say so plainly instead of inventing a flow;
+- three classes of blocker: setup | approval | capability;
+- whether Composio managed auth likely covers it.
+
+EVIDENCE DISCIPLINE (critical): label each evidence item SOURCED only when a real doc page supports it (include the sourceUrl), INFERRED when you reasoned it from related facts, UNVERIFIED when uncertain. NEVER use the label TESTED — you did not perform the setup. Do not invent source URLs; if you don't have a real one, use null and label UNVERIFIED.
+
+${SCHEMA_SPEC}`;
+
+function nowISO() {
+  return new Date().toISOString();
+}
+
+function push(
+  trail: ResearchTrailItem[],
+  item: Omit<ResearchTrailItem, "id" | "timestamp">,
+  onProgress?: (i: ResearchTrailItem) => void
+) {
+  const full: ResearchTrailItem = { ...item, id: `t${trail.length + 1}`, timestamp: nowISO() };
+  trail.push(full);
+  onProgress?.(full);
+  return full;
+}
+
+function stripFences(text: string): string {
+  return text.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+}
+
+async function callOpenAI(input: any[], useWebSearch: boolean): Promise<any> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "OPENAI_API_KEY is not set. The live investigator needs a real LLM key. Set it in .env.local (local) or the Vercel project settings (production)."
+    );
+  }
+  const body: any = { model: MODEL, input };
+  if (useWebSearch) body.tools = [{ type: WEBSEARCH_TOOL }];
+
+  const res = await fetch(OPENAI_API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`LLM request failed (${res.status}): ${errText.slice(0, 300)}`);
+  }
+  return res.json();
+}
+
+// Pull the assistant's text and the real web-search calls out of a Responses API payload.
+function parseResponse(data: any): { text: string; searches: { query: string; url?: string }[] } {
+  let text = "";
+  const searches: { query: string; url?: string }[] = [];
+  const output = Array.isArray(data?.output) ? data.output : [];
+  for (const item of output) {
+    if (item?.type === "web_search_call") {
+      const q = item?.action?.query || item?.query || "web search";
+      searches.push({ query: typeof q === "string" ? q : "web search" });
+    }
+    if (item?.type === "message" && Array.isArray(item.content)) {
+      for (const c of item.content) {
+        if (c?.type === "output_text" && typeof c.text === "string") text += c.text;
+      }
+    }
+  }
+  if (!text && typeof data?.output_text === "string") text = data.output_text;
+  return { text, searches };
+}
+
+function confidenceFrom(guide: Guide): number {
+  const ev = guide.evidence || [];
+  if (ev.length === 0) return 40;
+  const sourced = ev.filter((e) => e.label === "SOURCED" && e.sourceUrl).length;
+  const unverified = ev.filter((e) => e.label === "UNVERIFIED").length;
+  const base = 50 + sourced * 12 - unverified * 8;
+  return Math.max(20, Math.min(95, base));
+}
 
 export async function investigateAppLive(
   appNameOrUrl: string,
   onProgress?: (item: ResearchTrailItem) => void
 ): Promise<LiveInvestigationResult> {
   const trail: ResearchTrailItem[] = [];
-  const normalized = appNameOrUrl.trim().toLowerCase();
+  const query = appNameOrUrl.trim();
 
-  const addStep = (item: Omit<ResearchTrailItem, "id" | "timestamp">) => {
-    const fullItem: ResearchTrailItem = {
-      ...item,
-      id: `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      timestamp: new Date().toLocaleTimeString(),
-    };
-    trail.push(fullItem);
-    if (onProgress) {
-      onProgress(fullItem);
-    }
-    return fullItem;
-  };
+  push(trail, { type: "search", title: `Investigating "${query}"`, detail: "Searching the provider's official OAuth/developer documentation…", status: "running" }, onProgress);
 
-  // Step 1: Query Discovery
-  addStep({
-    type: "search",
-    title: `Searching developer portal for "${appNameOrUrl}"`,
-    detail: `Querying official documentation indices: "${appNameOrUrl} OAuth 2.0 developer guide scopes API rate limits"`,
-    status: "completed",
-  });
-
-  // Step 2: Protocol & Endpoint Inspection
-  const domainGuess = normalized.includes(".")
-    ? normalized.replace(/https?:\/\//, "").split("/")[0]
-    : `${normalized.replace(/\s+/g, "")}.com`;
-
-  addStep({
-    type: "fetch",
-    title: `Inspecting documentation endpoint: https://developer.${domainGuess}`,
-    detail: `Fetched OAuth discovery metadata, token endpoints (/oauth/token, /oauth/authorize), and client registration policies.`,
-    url: `https://developer.${domainGuess}`,
-    status: "completed",
-  });
-
-  // Step 3: Scope Review & Security Audit Check
-  addStep({
-    type: "analyze",
-    title: "Analyzing scope tiers and review gates",
-    detail: `Scanning for required verification audits (CASA, App Directory, enterprise admin consent, user quotas).`,
-    status: "completed",
-  });
-
-  // Step 4: Capability & Ceiling Analysis
-  addStep({
-    type: "analyze",
-    title: "Checking API capability ceilings & write restrictions",
-    detail: `Verifying read vs write permissions, rate limit quotas, and per-tenant governance restrictions.`,
-    status: "completed",
-  });
-
-  // Check known platform specs or build a high-fidelity synthesized guide
-  let synthesized: Guide;
-  const matchedKey = Object.keys(KNOWN_PLATFORM_SPECS).find((k) => normalized.includes(k));
-
-  if (matchedKey && KNOWN_PLATFORM_SPECS[matchedKey]) {
-    const spec = KNOWN_PLATFORM_SPECS[matchedKey];
-    synthesized = {
-      id: `gen-${matchedKey}`,
-      appName: spec.appName || appNameOrUrl,
-      category: spec.category || "Productivity / SaaS",
-      authType: spec.authType || "oauth2",
-      icon: "Globe",
-      verdict: spec.verdict || {
-        difficulty: "moderate",
-        handsOnMinutes: 30,
-        approvalWaitDays: 0,
-        oneLineSummary: "Investigated live by agent.",
-      },
-      twoClocks: spec.twoClocks || {
-        worksInDev: "~20 min",
-        anyUserCanConnect: "Immediate",
-      },
-      cost: spec.cost || "Free developer tier",
-      capabilityCheck: spec.capabilityCheck || {
-        question: `Can an agent execute standard read and write actions in ${appNameOrUrl}?`,
-        verdict: "full",
-        detail: "REST API supports standard agent operations with granted OAuth scopes.",
-      },
-      prerequisites: spec.prerequisites || [`A ${appNameOrUrl} developer account`],
-      steps: spec.steps || [
-        {
-          stepNumber: 1,
-          text: `Register a new OAuth Application in the ${appNameOrUrl} developer portal.`,
-          owner: "YOU",
-          portalUrl: `https://developer.${domainGuess}`,
-          fields: [
-            { name: "App Name", action: "fill", valueOrAdvice: "AI Agent Integration" },
-            { name: "Redirect URI", action: "fill", valueOrAdvice: "https://yourapp.com/api/auth/callback" },
-          ],
-        },
+  // 1) Research + draft with real web search.
+  let data: any;
+  try {
+    data = await callOpenAI(
+      [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: `Investigate OAuth app setup and approval for: ${query}. Research its official docs, then output the JSON guide.` },
       ],
-      scopes: spec.scopes || [
-        { scope: "read", triggersReview: false, tier: "non-sensitive", note: "Read access" },
-        { scope: "write", triggersReview: false, tier: "sensitive", note: "Write access" },
-      ],
-      blockers: spec.blockers || [
-        {
-          class: "setup",
-          issue: "Redirect URI must match protocol and port exactly.",
-          workaround: "Include trailing slash and HTTPS in production.",
-          severity: "medium",
-        },
-      ],
-      composio: spec.composio || {
-        managed: true,
-        savedDays: 0,
-        recommendation: `Check Composio's managed toolkit catalog for 1-click ${appNameOrUrl} connection.`,
-        link: "https://docs.composio.dev/toolkits/managed-auth",
-      },
-      evidence: spec.evidence || [
-        {
-          claim: `Inspected ${appNameOrUrl} developer specifications and extracted current OAuth 2.0 requirements.`,
-          label: "SOURCED",
-          sourceUrl: `https://developer.${domainGuess}`,
-        },
-      ],
-    };
-  } else {
-    // Generate robust live synthesized guide
-    const cleanName = appNameOrUrl.charAt(0).toUpperCase() + appNameOrUrl.slice(1).replace(/\.com$/, "");
-    synthesized = {
-      id: `gen-${cleanName.toLowerCase()}`,
-      appName: cleanName,
-      category: "SaaS & Cloud Services",
-      authType: "oauth2",
-      icon: "Globe",
-      verdict: {
-        difficulty: "moderate",
-        handsOnMinutes: 30,
-        approvalWaitDays: 7,
-        oneLineSummary: `Live agent researched: Standard OAuth 2.0 flow; unlisted testing available immediately, directory review takes ~1 week.`,
-      },
-      twoClocks: {
-        worksInDev: "~20 min in developer sandbox",
-        anyUserCanConnect: "~7 days (standard app review or unlisted client deployment)",
-      },
-      cost: "Free developer account",
-      capabilityCheck: {
-        question: `Can an agent interact with ${cleanName} APIs without human intervention?`,
-        verdict: "full",
-        detail: `The ${cleanName} REST API provides endpoints for automated read and write actions. Ensure required rate limit backoff headers are respected in production.`,
-      },
-      prerequisites: [
-        `An active ${cleanName} developer or enterprise account`,
-        "Verified HTTPS redirect callback URL",
-        "Public Privacy Policy URL",
-      ],
-      steps: [
-        {
-          stepNumber: 1,
-          text: `Navigate to the ${cleanName} Developer Portal and create a new OAuth 2.0 Application.`,
-          owner: "YOU",
-          portalUrl: `https://developer.${domainGuess}`,
-          fields: [
-            { name: "Application Name", action: "fill", valueOrAdvice: `e.g. Agent ${cleanName} Connector` },
-            { name: "Redirect URI", action: "fill", valueOrAdvice: "https://yourapp.com/api/auth/callback" },
-            { name: "Application Logo", action: "watch", note: "Optional: Skip during development to avoid triggering brand reviews." },
-          ],
-        },
-        {
-          stepNumber: 2,
-          text: `Configure required OAuth scopes and copy Client ID & Client Secret.`,
-          owner: "AGENT+YOU",
-          fields: [
-            { name: "Scopes", action: "fill", valueOrAdvice: "read, write" },
-            { name: "Client Secret", action: "watch", note: "Store securely in your agent environment vault (.env)." },
-          ],
-        },
-      ],
-      scopes: [
-        { scope: "read", triggersReview: false, tier: "non-sensitive", note: "Standard read operations" },
-        { scope: "write", triggersReview: false, tier: "sensitive", note: "Data creation and updates" },
-      ],
-      blockers: [
-        {
-          class: "setup",
-          issue: "Exact character matching for Redirect URIs; HTTP localhost is only permitted in developer mode.",
-          workaround: "Use strict HTTPS callbacks for staging and production domains.",
-          severity: "medium",
-        },
-        {
-          class: "approval",
-          issue: "Multi-tenant public distribution may require developer verification or marketplace review.",
-          workaround: "Test with internal team accounts while submitting the public review form, or use Composio Managed Auth.",
-          severity: "medium",
-        },
-      ],
-      composio: {
-        managed: true,
-        savedDays: 7,
-        recommendation: `Composio supports rapid managed authentication for ${cleanName}. Use Composio to avoid building custom token refresh handling.`,
-        link: "https://docs.composio.dev/toolkits/managed-auth",
-      },
-      evidence: [
-        {
-          claim: `Synthesized live from developer documentation at developer.${domainGuess}.`,
-          label: "INFERRED",
-          sourceUrl: `https://developer.${domainGuess}`,
-        },
-      ],
-    };
+      true
+    );
+  } catch (err: any) {
+    push(trail, { type: "verdict", title: "Live research unavailable", detail: err.message, status: "warning" }, onProgress);
+    throw err;
   }
 
-  // Step 5: Schema Validation & Repair Pass
-  addStep({
-    type: "validate",
-    title: "Validating against strict Zod Guide schema",
-    detail: "Validating verdict, twoClocks, capabilityCheck, blockers, and who-does-what step owners...",
-    status: "completed",
-  });
+  const { text, searches } = parseResponse(data);
 
-  const parseResult = GuideSchema.safeParse(synthesized);
-  if (!parseResult.success) {
-    addStep({
-      type: "validate",
-      title: "Schema validation failure detected — executing repair pass",
-      detail: `Repairing: ${parseResult.error.issues.map((i) => i.path.join(".")).join(", ")}`,
-      status: "warning",
-    });
-    // Repair pass: ensure defaults
-    synthesized.id = synthesized.id || `gen-${Date.now()}`;
-    synthesized.authType = synthesized.authType || "oauth2";
+  // Build a REAL trail from the searches the model actually ran.
+  for (const s of searches) {
+    push(trail, { type: "fetch", title: "Read documentation", detail: s.query, url: s.url, status: "completed" }, onProgress);
+  }
+  push(trail, { type: "analyze", title: "Drafting guide", detail: "Structuring findings into the guide schema…", status: "completed" }, onProgress);
+
+  // 2) Validate against our Zod schema; one repair pass on failure.
+  let guide: Guide | null = null;
+  let parsed: any = null;
+  try {
+    parsed = JSON.parse(stripFences(text));
+    guide = GuideSchema.parse(parsed);
+  } catch (e: any) {
+    push(trail, { type: "validate", title: "Schema repair", detail: "First draft failed validation — asking the model to correct it…", status: "warning" }, onProgress);
+    const repair = await callOpenAI(
+      [
+        { role: "system", content: `Fix this JSON so it EXACTLY matches the schema. Return ONLY JSON.\n\n${SCHEMA_SPEC}` },
+        { role: "user", content: `Validation error: ${String(e).slice(0, 300)}\n\nJSON to fix:\n${text.slice(0, 6000)}` },
+      ],
+      false
+    );
+    const repaired = parseResponse(repair);
+    parsed = JSON.parse(stripFences(repaired.text));
+    guide = GuideSchema.parse(parsed); // throws if still broken — surfaced to the user honestly
   }
 
-  addStep({
-    type: "verdict",
-    title: "Guide compiled successfully",
-    detail: `Verdict: ${synthesized.verdict.difficulty.toUpperCase()} | Dev Clock: ${synthesized.twoClocks.worksInDev} | Any User Connects: ${synthesized.twoClocks.anyUserCanConnect}`,
-    status: "completed",
-  });
+  push(trail, { type: "validate", title: "Schema validated", detail: "Guide passed Zod validation.", status: "completed" }, onProgress);
 
-  return {
-    guide: synthesized,
-    trail,
-    confidenceScore: matchedKey ? 96 : 88,
-  };
+  // 3) Safety net: strip any TESTED label the model may have produced.
+  guide.evidence = (guide.evidence || []).map((e) =>
+    e.label === "TESTED" ? { ...e, label: "UNVERIFIED" as const } : e
+  );
+  guide.id = guide.id || `gen-${query.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+
+  const confidenceScore = confidenceFrom(guide);
+  push(trail, { type: "verdict", title: "Done", detail: `Guide generated · confidence ${confidenceScore}% · ${searches.length} live searches`, status: "completed" }, onProgress);
+
+  return { guide, trail, confidenceScore };
 }
