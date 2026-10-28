@@ -1,7 +1,8 @@
 # OAuth Launch Planner & Feasibility Engine
 ### APM Integrations Take-Home Assessment — Composio
 **Candidate:** Ayush Kabra  
-**Submission Repository & Demo Experience:** [OAuth Launch Planner](file:///c:/Users/Ayush/Composio/index.html)
+**Source Repository:** [https://github.com/ayushkabra/oauth-launch-planner](https://github.com/ayushkabra/oauth-launch-planner)  
+**Live Production Experience:** [https://ayushkabra.github.io/oauth-launch-planner/](https://ayushkabra.github.io/oauth-launch-planner/)
 
 ---
 

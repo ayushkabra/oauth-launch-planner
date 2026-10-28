@@ -53,7 +53,7 @@ const KNOWN_PLATFORM_SPECS: Record<string, Partial<Guide>> = {
         ],
       },
       {
-        stepNumber": 2,
+        stepNumber: 2,
         text: "Select OAuth Scopes (Manage user data via APIs, Perform requests at any time).",
         owner: "AGENT+YOU",
       },
@@ -92,9 +92,9 @@ const KNOWN_PLATFORM_SPECS: Record<string, Partial<Guide>> = {
     authType: "oauth2",
     verdict: {
       difficulty: "moderate",
-      handsOnMinutes": 30,
+      handsOnMinutes: 30,
       approvalWaitDays: 0,
-      oneLineSummary": "Stripe Connect OAuth for multi-tenant accounts is instant in test mode; public live mode requires business verification.",
+      oneLineSummary: "Stripe Connect OAuth for multi-tenant accounts is instant in test mode; public live mode requires business verification.",
     },
     twoClocks: {
       worksInDev: "~15 min (Stripe Test Mode with instant Connect keys)",
@@ -310,7 +310,7 @@ export async function investigateAppLive(
           ],
         },
         {
-          stepNumber": 2,
+          stepNumber: 2,
           text: `Configure required OAuth scopes and copy Client ID & Client Secret.`,
           owner: "AGENT+YOU",
           fields: [
