@@ -2,7 +2,7 @@
 ### APM Integrations Take-Home Assessment — Composio
 **Candidate:** Ayush Kabra
 **Source Repository:** https://github.com/ayushkabra/oauth-launch-planner
-**Live App (Vercel):** `[YOUR_VERCEL_URL]` — runs the full app including the live agent
+**Live App (Vercel):** https://oauth-launch-planner-rosy.vercel.app/ — runs the full app including the live agent
 **Static demo (GitHub Pages):** https://ayushkabra.github.io/oauth-launch-planner/ — library/planner only; the live agent needs the Vercel deployment
 
 ---
