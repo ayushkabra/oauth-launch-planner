@@ -13,28 +13,37 @@ export interface ResearchTrailItem {
 export interface LiveInvestigationResult {
   guide: Guide;
   trail: ResearchTrailItem[];
-  confidenceScore: number; // 0-100, derived from real sources found
+  confidenceScore: number;
 }
 
 // ---------------------------------------------------------------------------
-// HYBRID LIVE INVESTIGATOR:
-// 1. Google Gemini API (100% Free, NO credit card needed) via Google AI Studio
-//    with real Google Search Grounding (`googleSearch`).
-// 2. OpenAI Responses API (Paid developer tier) with hosted web search.
-// 3. Graceful Demo Fallback for common candidate apps (Stripe, Salesforce, Figma, etc.)
-//    when no API key is configured, preventing red crashes during reviewer demos.
-// Evidence is NEVER labeled TESTED here: only candidate-executed setups earn TESTED.
+// Live investigator — Groq (OpenAI-compatible), with Gemini as an optional path.
+//
+// WHY GROQ: Gemini's free tier quota (429) kept blocking the demo. Groq's free
+// tier is far more generous and reliable for an interview demo. This uses an
+// LLM to generate a schema-validated guide — a real agentic generation.
+//
+// MODEL SELECTION IS SELF-HEALING: it never hardcodes a model name (that caused
+// the earlier 404 loop). It lists the provider's models and picks a strong chat
+// model, so a deprecated name can't get stuck. Pin GROQ_MODEL to override.
+//
+// NOTE ON GROUNDING: Groq chat models answer from their training knowledge, not
+// a live web crawl. So evidence here is SOURCED (model knows the doc) / INFERRED
+// / UNVERIFIED — never TESTED. If you want live web grounding, use the Gemini
+// path with billing enabled (set GEMINI_API_KEY and remove GROQ_API_KEY).
 // ---------------------------------------------------------------------------
 
-const SCHEMA_SPEC = `Return ONLY a valid JSON object (no markdown formatting, no code blocks) with EXACTLY this structure:
+const GROQ_BASE = "https://api.groq.com/openai/v1";
+const REQUEST_TIMEOUT_MS = 20000;
+
+const SCHEMA_SPEC = `Return ONLY a JSON object (no markdown, no prose) with EXACTLY this shape:
 {
-  "appName": string,
-  "category": string,
-  "authType": "oauth2" | "oauth1" | "api_key" | "none",
+  "appName": string, "category": string,
+  "authType": "oauth2"|"oauth1"|"api_key"|"none",
   "verdict": { "difficulty": "trivial"|"moderate"|"hard"|"gated", "handsOnMinutes": number, "approvalWaitDays": number, "oneLineSummary": string },
   "twoClocks": { "worksInDev": string, "anyUserCanConnect": string },
   "cost": string,
-  "capabilityCheck": { "question": string, "verdict": "full"|"partial"|"blocked"|"not_applicable", "detail": string, "warningCallout": string },
+  "capabilityCheck": { "question": string, "verdict": "full"|"partial"|"blocked"|"not_applicable", "detail": string },
   "prerequisites": string[],
   "steps": [ { "stepNumber": number, "text": string, "owner": "YOU"|"AGENT"|"AGENT+YOU", "portalUrl": string|null, "fields": [ { "name": string, "action": "fill"|"leave"|"watch", "valueOrAdvice"?: string, "note"?: string } ] } ],
   "scopes": [ { "scope": string, "triggersReview": boolean, "tier"?: "non-sensitive"|"sensitive"|"restricted"|"admin", "note"?: string } ],
@@ -43,480 +52,86 @@ const SCHEMA_SPEC = `Return ONLY a valid JSON object (no markdown formatting, no
   "evidence": [ { "claim": string, "label": "SOURCED"|"INFERRED"|"UNVERIFIED", "sourceUrl": string|null } ]
 }`;
 
-const SYSTEM_PROMPT = `You are an OAuth setup investigator for developers building AI agents.
-Given an app name or docs URL, research the provider's OFFICIAL developer documentation and determine, for that provider's OAuth app:
-- the registration steps (which console, which fields), and for each important field whether to FILL / LEAVE / WATCH;
-- scopes and which ones trigger a review;
-- the path to "any user can connect" (verification/review) and realistic timelines;
-- the CAPABILITY CHECK first: can an agent actually do the needed read/write, or is the API read-only / capped / gated? If the app has no third-party OAuth (API keys only), set authType accordingly and say so plainly instead of inventing a flow;
-- three classes of blocker: setup | approval | capability;
-- whether Composio managed auth covers it.
-
-EVIDENCE DISCIPLINE (critical): label each evidence item SOURCED only when an official doc page supports it (include the sourceUrl), INFERRED when reasoned from related facts, UNVERIFIED when uncertain. NEVER use the label TESTED. Do not invent fake URLs.
-
+const INSTRUCTIONS = `You are an OAuth setup investigator for developers building AI agents.
+For the given app, determine its OAuth app registration path (which console, which fields, mark each FILL/LEAVE/WATCH), scopes and which trigger review, the realistic path and timeline to "any user can connect", and — FIRST — the capability check: can an agent actually do the needed read/write, or is the API read-only / capped / gated? If the app has no third-party OAuth (API keys only), set authType accordingly and say so plainly. Classify blockers as setup | approval | capability. State whether Composio managed auth likely covers it.
+EVIDENCE: label SOURCED only when you are confident a real provider doc supports it (give the doc URL if you know it), INFERRED when reasoned, UNVERIFIED when uncertain. NEVER use TESTED. Do not invent source URLs — use null + UNVERIFIED if unsure.
 ${SCHEMA_SPEC}`;
 
-function nowISO() {
-  return new Date().toISOString();
-}
+function nowISO() { return new Date().toISOString(); }
 
-function push(
-  trail: ResearchTrailItem[],
-  item: Omit<ResearchTrailItem, "id" | "timestamp">,
-  onProgress?: (i: ResearchTrailItem) => void
-) {
+function push(trail: ResearchTrailItem[], item: Omit<ResearchTrailItem, "id" | "timestamp">, onProgress?: (i: ResearchTrailItem) => void) {
   const full: ResearchTrailItem = { ...item, id: `t${trail.length + 1}`, timestamp: nowISO() };
   trail.push(full);
   onProgress?.(full);
   return full;
 }
 
-function stripFences(text: string): string {
-  const trimmed = text.trim();
-  const firstBrace = trimmed.indexOf("{");
-  const lastBrace = trimmed.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    return trimmed.substring(firstBrace, lastBrace + 1);
-  }
-  return trimmed.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+function stripFences(t: string): string {
+  return t.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
 }
 
-// ---------------------------------------------------------------------------
-// 1. Google Gemini API with Google Search Grounding (100% Free)
-// ---------------------------------------------------------------------------
-async function callGemini(
-  query: string,
-  trail: ResearchTrailItem[],
-  onProgress?: (i: ResearchTrailItem) => void
-): Promise<{ text: string; searches: { query: string; url?: string }[] }> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
-
-  push(trail, {
-    type: "search",
-    title: "Google Search Grounding (Gemini 2.0)",
-    detail: `Searching live official developer docs for "${query}"…`,
-    status: "running",
-  }, onProgress);
-
-  const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-  const prompt = `${SYSTEM_PROMPT}\n\nUSER REQUEST:\nInvestigate OAuth app setup, capability ceilings, and approval path for: ${query}. Use Google Search to read the official developer documentation and return ONLY the JSON guide matching the schema.`;
-
-  const body = {
-    contents: [{ parts: [{ text: prompt }] }],
-    tools: [{ googleSearch: {} }],
-  };
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Gemini API failed (${res.status}): ${errText.slice(0, 300)}`);
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
   }
+}
 
+// Ask Groq which models exist and pick a strong chat model — no hardcoded names.
+let cachedModel: string | null = null;
+async function resolveGroqModel(key: string): Promise<string> {
+  if (process.env.GROQ_MODEL) return process.env.GROQ_MODEL;
+  if (cachedModel) return cachedModel;
+  const res = await fetchWithTimeout(`${GROQ_BASE}/models`, { headers: { Authorization: `Bearer ${key}` } });
+  if (!res.ok) throw new Error(`Groq ListModels failed (${res.status}): ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
-  const candidate = data?.candidates?.[0];
-  const parts = candidate?.content?.parts || [];
-  const text = parts.map((p: any) => (typeof p?.text === "string" ? p.text : "")).join("");
-
-  const searches: { query: string; url?: string }[] = [];
-  const grounding = candidate?.groundingMetadata;
-  if (Array.isArray(grounding?.webSearchQueries)) {
-    for (const q of grounding.webSearchQueries) {
-      searches.push({ query: q });
-    }
-  }
-  if (Array.isArray(grounding?.groundingChunks)) {
-    for (const chunk of grounding.groundingChunks) {
-      if (chunk?.web?.uri) {
-        searches.push({ query: chunk.web.title || "Official Documentation", url: chunk.web.uri });
-      }
-    }
-  }
-
-  return { text, searches };
+  const ids: string[] = (data.data || []).map((m: any) => m.id).filter(Boolean)
+    .filter((id: string) => !/whisper|guard|tts|vision|embed/i.test(id));
+  // Prefer current Groq chat models. gpt-oss is the current free-tier family
+  // (Llama 3.x was retired); fall back through llama/qwen/mixtral to anything usable.
+  const pick =
+    ids.find((id) => /gpt-oss/i.test(id)) ||
+    ids.find((id) => /llama.*(70b|versatile|instruct)/i.test(id)) ||
+    ids.find((id) => /llama|qwen|mixtral|gemma/i.test(id)) ||
+    ids[0];
+  if (!pick) throw new Error("No usable Groq chat model found for this key.");
+  cachedModel = pick;
+  return pick;
 }
 
-// ---------------------------------------------------------------------------
-// 2. OpenAI Responses API with Web Search
-// ---------------------------------------------------------------------------
-async function callOpenAI(
-  query: string,
-  trail: ResearchTrailItem[],
-  onProgress?: (i: ResearchTrailItem) => void
-): Promise<{ text: string; searches: { query: string; url?: string }[] }> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY is not set");
-
-  const model = process.env.OPENAI_MODEL || "gpt-4o";
-  const webSearchTool = process.env.OPENAI_WEBSEARCH_TOOL || "web_search_preview";
-
-  push(trail, {
-    type: "search",
-    title: "OpenAI Live Web Search",
-    detail: `Querying web for "${query}" OAuth documentation…`,
-    status: "running",
-  }, onProgress);
-
-  const res = await fetch("https://api.openai.com/v1/responses", {
+async function groqChat(key: string, model: string, prompt: string): Promise<string> {
+  const res = await fetchWithTimeout(`${GROQ_BASE}/chat/completions`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
       model,
-      input: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: `Investigate OAuth app setup and approval for: ${query}. Research official docs, then output the JSON guide.` },
+      messages: [
+        { role: "system", content: "You output only valid JSON matching the user's schema. No prose." },
+        { role: "user", content: prompt },
       ],
-      tools: [{ type: webSearchTool }],
+      response_format: { type: "json_object" },
+      temperature: 0.2,
     }),
   });
-
   if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`OpenAI request failed (${res.status}): ${errText.slice(0, 300)}`);
+    const txt = await res.text();
+    const err: any = new Error(`Groq ${model} failed (${res.status}): ${txt.slice(0, 220)}`);
+    err.status = res.status;
+    throw err;
   }
-
   const data = await res.json();
-  let text = "";
-  const searches: { query: string; url?: string }[] = [];
-  const output = Array.isArray(data?.output) ? data.output : [];
-  for (const item of output) {
-    if (item?.type === "web_search_call") {
-      const q = item?.action?.query || item?.query || "web search";
-      searches.push({ query: typeof q === "string" ? q : "web search" });
-    }
-    if (item?.type === "message" && Array.isArray(item.content)) {
-      for (const c of item.content) {
-        if (c?.type === "output_text" && typeof c.text === "string") text += c.text;
-      }
-    }
-  }
-  if (!text && typeof data?.output_text === "string") text = data.output_text;
-
-  return { text, searches };
+  return data?.choices?.[0]?.message?.content || "";
 }
-
-// ---------------------------------------------------------------------------
-// 3. Deterministic Pre-Researched Fallback for Suggested Apps
-// ---------------------------------------------------------------------------
-const DEMO_GUIDES: Record<string, Partial<Guide>> = {
-  stripe: {
-    id: "stripe-connect",
-    appName: "Stripe (Stripe Connect)",
-    category: "Payments & Billing",
-    authType: "oauth2",
-    verdict: {
-      difficulty: "moderate",
-      handsOnMinutes: 30,
-      approvalWaitDays: 0,
-      oneLineSummary: "Instant in Test Mode; live mode requires multi-step business verification & bank account linking.",
-    },
-    twoClocks: {
-      worksInDev: "~20 min in test mode",
-      anyUserCanConnect: "Immediate in Test Mode; 1–3 business days for Live Mode merchant verification",
-    },
-    cost: "Free to register. Standard payment processing fees apply (2.9% + 30¢ per transaction).",
-    capabilityCheck: {
-      question: "Can an agent create charges and read customer payment records across accounts?",
-      verdict: "full",
-      detail: "Stripe Connect OAuth allows reading and creating charges, refunds, and subscriptions on connected accounts. Restrictive API key permissions and webhook secrets must be managed securely.",
-      warningCallout: "Do not hardcode live secret keys; use restricted API keys or OAuth standard/express flows.",
-    },
-    prerequisites: ["A Stripe account", "Verified email and two-factor authentication"],
-    steps: [
-      {
-        stepNumber: 1,
-        text: "Go to Stripe Dashboard → Settings → Connect → Platform settings.",
-        owner: "YOU",
-        portalUrl: "https://dashboard.stripe.com/settings/connect",
-        fields: [
-          { name: "OAuth for Standard accounts", action: "fill", valueOrAdvice: "Toggle switch ON" },
-          { name: "Redirect URIs", action: "fill", valueOrAdvice: "https://yourapp.com/api/auth/callback/stripe", note: "Must add separate Test and Live URLs" },
-        ],
-      },
-      {
-        stepNumber: 2,
-        text: "Obtain Client ID under Connect settings.",
-        owner: "YOU",
-        fields: [
-          { name: "Live / Test Client ID", action: "fill", note: "Test client ID starts with ca_..." },
-        ],
-      },
-    ],
-    scopes: [{ scope: "read_write", triggersReview: false, note: "Full access to connected accounts" }],
-    blockers: [
-      {
-        class: "setup",
-        issue: "OAuth is disabled by default in new Stripe accounts under Connect settings.",
-        workaround: "Toggle 'OAuth' switch ON in Stripe Connect platform settings.",
-        severity: "medium",
-      },
-    ],
-    composio: {
-      managed: true,
-      savedDays: 0,
-      recommendation: "Composio provides managed Stripe actions and token handling for connected accounts.",
-      link: "https://docs.composio.dev/toolkits/managed-auth",
-    },
-    evidence: [
-      {
-        claim: "Stripe Connect OAuth requires enabling OAuth in dashboard settings; test mode is instant.",
-        label: "SOURCED",
-        sourceUrl: "https://docs.stripe.com/connect/oauth-reference",
-      },
-    ],
-  },
-  salesforce: {
-    id: "salesforce-connected-app",
-    appName: "Salesforce",
-    category: "Enterprise CRM",
-    authType: "oauth2",
-    verdict: {
-      difficulty: "hard",
-      handsOnMinutes: 60,
-      approvalWaitDays: 0,
-      oneLineSummary: "Complex 10-minute server replication delay and granular OAuth scopes; immediate multi-tenant access once configured.",
-    },
-    twoClocks: {
-      worksInDev: "~45 min (+ mandatory 10 min Salesforce replication delay)",
-      anyUserCanConnect: "Immediate for external Salesforce orgs if permitted by client org admin policies",
-    },
-    cost: "Free developer edition available at developer.salesforce.com",
-    capabilityCheck: {
-      question: "Can an agent query SOQL records and update Lead/Opportunity objects?",
-      verdict: "full",
-      detail: "Salesforce REST API and SOQL queries provide deep data access. The wall is ENTERPRISE ADMIN POLICIES: Connected Apps can be blocked or require pre-authorization by the customer's Salesforce Administrator.",
-      warningCallout: "Connected apps must be permitted in the customer org's OAuth Policies, otherwise login returns 'OAUTH_APP_ACCESS_DENIED'.",
-    },
-    prerequisites: ["A Salesforce Developer Edition or Sandbox org with System Administrator permissions"],
-    steps: [
-      {
-        stepNumber: 1,
-        text: "In Salesforce Setup → App Manager → New Connected App.",
-        owner: "YOU",
-        portalUrl: "https://login.salesforce.com",
-        fields: [
-          { name: "Connected App Name / Contact Email", action: "fill", valueOrAdvice: "Agent Salesforce Sync" },
-          { name: "Enable OAuth Settings", action: "fill", valueOrAdvice: "Check this box" },
-          { name: "Callback URL", action: "fill", valueOrAdvice: "https://yourapp.com/api/auth/callback/salesforce" },
-          { name: "Selected OAuth Scopes", action: "watch", note: "Add 'api' (Manage user data via APIs) and 'refresh_token' (Perform requests at any time)" },
-        ],
-      },
-      {
-        stepNumber: 2,
-        text: "Wait 10 minutes for Salesforce global metadata propagation.",
-        owner: "YOU",
-        note: "Salesforce Connected Apps take 2–10 minutes to become active across all data centers.",
-      },
-    ],
-    scopes: [
-      { scope: "api", triggersReview: false, note: "Full access to standard and custom objects" },
-      { scope: "refresh_token", triggersReview: false, note: "Offline access" },
-    ],
-    blockers: [
-      {
-        class: "setup",
-        issue: "Salesforce 10-minute replication lag: Immediately testing credentials throws 'invalid_client_id'.",
-        workaround: "Wait 10 minutes after creating the Connected App before running auth requests.",
-        severity: "medium",
-      },
-      {
-        class: "approval",
-        issue: "Enterprise admin consent: Customer Salesforce orgs often require an admin to pre-approve the Connected App.",
-        workaround: "Direct admins to Setup → Manage Connected Apps → Edit Policies → 'Admin approved users are pre-authorized'.",
-        severity: "high",
-      },
-    ],
-    composio: {
-      managed: true,
-      savedDays: 0,
-      recommendation: "Composio manages Salesforce token refreshes, instance URL routing, and SOQL execution.",
-      link: "https://docs.composio.dev/toolkits/managed-auth",
-    },
-    evidence: [
-      {
-        claim: "Salesforce Connected Apps require enabling OAuth in App Manager and experience a known 10-minute replication delay.",
-        label: "SOURCED",
-        sourceUrl: "https://help.salesforce.com/s/articleView?id=sf.connected_app_create.htm",
-      },
-    ],
-  },
-  figma: {
-    id: "figma",
-    appName: "Figma",
-    category: "Design & Creative",
-    authType: "oauth2",
-    verdict: {
-      difficulty: "trivial",
-      handsOnMinutes: 15,
-      approvalWaitDays: 0,
-      oneLineSummary: "Modern OAuth 2.0 with instant multi-tenant authorization; rate limited to 20 requests per minute.",
-    },
-    twoClocks: {
-      worksInDev: "~15 min",
-      anyUserCanConnect: "Immediate — no Figma app review required for API integrations",
-    },
-    cost: "Free",
-    capabilityCheck: {
-      question: "Can an agent create or edit Figma canvas components programmatically?",
-      verdict: "partial",
-      detail: "The Figma REST API is predominantly read-only for canvas vectors and components (exporting images, reading comments). WRITING canvas content requires a Figma Plugin (running inside the desktop/web client runtime), NOT standard REST API calls.",
-      warningCallout: "REST API cannot programmatically manipulate canvas vectors; only Figma Plugins execute canvas writes.",
-    },
-    prerequisites: ["A Figma account"],
-    steps: [
-      {
-        stepNumber: 1,
-        text: "Go to figma.com → Settings → Developer tokens → OAuth apps → Create new app.",
-        owner: "YOU",
-        portalUrl: "https://www.figma.com/developers/api#oauth2",
-        fields: [
-          { name: "App name", action: "fill", valueOrAdvice: "Agent Figma Connector" },
-          { name: "Callback URL", action: "fill", valueOrAdvice: "https://yourapp.com/api/auth/callback/figma" },
-        ],
-      },
-    ],
-    scopes: [
-      { scope: "files:read", triggersReview: false, note: "Read file structure and layers" },
-      { scope: "comments:write", triggersReview: false, note: "Post comments on design files" },
-    ],
-    blockers: [
-      {
-        class: "capability",
-        issue: "Figma REST API does not support programmatic canvas writes (adding shapes, editing frames).",
-        workaround: "If your agent needs to edit designs, build a Figma Plugin (WebAssembly/JS) rather than an external REST integration.",
-        severity: "fatal",
-      },
-    ],
-    composio: {
-      managed: true,
-      savedDays: 0,
-      recommendation: "Composio provides managed Figma authentication and pre-built file/comment actions.",
-      link: "https://docs.composio.dev/toolkits/managed-auth",
-    },
-    evidence: [
-      {
-        claim: "Figma supports instant public OAuth 2.0; REST API does not provide node write endpoints.",
-        label: "SOURCED",
-        sourceUrl: "https://www.figma.com/developers/api",
-      },
-    ],
-  },
-  zendesk: {
-    id: "zendesk",
-    appName: "Zendesk",
-    category: "Customer Support",
-    authType: "oauth2",
-    verdict: {
-      difficulty: "moderate",
-      handsOnMinutes: 30,
-      approvalWaitDays: 0,
-      oneLineSummary: "Standard OAuth2, but requires subdomain-specific authorize URLs per customer account.",
-    },
-    twoClocks: {
-      worksInDev: "~20 min",
-      anyUserCanConnect: "Immediate for global users once subdomain routing is implemented",
-    },
-    cost: "Free Zendesk developer sandbox account available",
-    capabilityCheck: {
-      question: "Can an agent create and solve customer support tickets?",
-      verdict: "full",
-      detail: "Zendesk provides comprehensive REST endpoints for tickets, users, macros, and audit logs. The main nuance is that each customer tenant has a unique subdomain (e.g. customer.zendesk.com).",
-      warningCallout: "Must prompt the user for their Zendesk subdomain before initiating the OAuth redirect.",
-    },
-    prerequisites: ["A Zendesk Support administrator account"],
-    steps: [
-      {
-        stepNumber: 1,
-        text: "In Zendesk Admin Center → Apps and integrations → APIs → Zendesk API → OAuth Clients → Add client.",
-        owner: "YOU",
-        portalUrl: "https://yoursubdomain.zendesk.com/admin/apps-integrations/apis/zendesk-api",
-      },
-    ],
-    scopes: [{ scope: "read, write", triggersReview: false, note: "Full ticket access" }],
-    blockers: [
-      {
-        class: "setup",
-        issue: "Zendesk requires routing OAuth requests to each customer's specific subdomain (e.g. `https://{subdomain}.zendesk.com/oauth/authorizations/new`).",
-        workaround: "Prompt user for their company subdomain prior to starting the OAuth handshake.",
-        severity: "medium",
-      },
-    ],
-    composio: {
-      managed: true,
-      savedDays: 0,
-      recommendation: "Composio handles multi-tenant Zendesk subdomain routing and OAuth refresh lifecycle automatically.",
-      link: "https://docs.composio.dev/toolkits/managed-auth",
-    },
-    evidence: [
-      {
-        claim: "Zendesk OAuth requires tenant subdomain routing; multi-tenant installation is instant.",
-        label: "SOURCED",
-        sourceUrl: "https://developer.zendesk.com/documentation/ticketing/working-with-oauth/",
-      },
-    ],
-  },
-  asana: {
-    id: "asana",
-    appName: "Asana",
-    category: "Project Management",
-    authType: "oauth2",
-    verdict: {
-      difficulty: "trivial",
-      handsOnMinutes: 15,
-      approvalWaitDays: 0,
-      oneLineSummary: "Clean OAuth 2.0 with PKCE support; multi-tenant installation works out of the box.",
-    },
-    twoClocks: {
-      worksInDev: "~15 min",
-      anyUserCanConnect: "Immediate — no mandatory approval gate for standard OAuth integrations",
-    },
-    cost: "Free developer account available",
-    capabilityCheck: {
-      question: "Can an agent create tasks, assign members, and update project milestones?",
-      verdict: "full",
-      detail: "Asana's REST API is comprehensive and supports full CRUD on tasks, projects, portfolios, and comments.",
-    },
-    prerequisites: ["An Asana account"],
-    steps: [
-      {
-        stepNumber: 1,
-        text: "Go to app.asana.com/-/developer-console → Add new application.",
-        owner: "YOU",
-        portalUrl: "https://app.asana.com/-/developer-console",
-      },
-    ],
-    scopes: [{ scope: "default", triggersReview: false, note: "Full user access" }],
-    blockers: [],
-    composio: {
-      managed: true,
-      savedDays: 0,
-      recommendation: "Composio provides managed Asana actions for task and portfolio management.",
-      link: "https://docs.composio.dev/toolkits/managed-auth",
-    },
-    evidence: [
-      {
-        claim: "Asana supports instant multi-tenant OAuth 2.0 without a review queue.",
-        label: "SOURCED",
-        sourceUrl: "https://developers.asana.com/docs/oauth",
-      },
-    ],
-  },
-};
 
 function confidenceFrom(guide: Guide): number {
   const ev = guide.evidence || [];
-  if (ev.length === 0) return 40;
+  if (!ev.length) return 40;
   const sourced = ev.filter((e) => e.label === "SOURCED" && e.sourceUrl).length;
   const unverified = ev.filter((e) => e.label === "UNVERIFIED").length;
-  const base = 60 + sourced * 10 - unverified * 8;
-  return Math.max(30, Math.min(95, base));
+  return Math.max(20, Math.min(95, 50 + sourced * 12 - unverified * 8));
 }
 
 export async function investigateAppLive(
@@ -525,155 +140,52 @@ export async function investigateAppLive(
 ): Promise<LiveInvestigationResult> {
   const trail: ResearchTrailItem[] = [];
   const query = appNameOrUrl.trim();
-  const lower = query.toLowerCase();
+  const key = process.env.GROQ_API_KEY;
 
-  push(trail, {
-    type: "search",
-    title: `Initiating Research for "${query}"`,
-    detail: "Scanning environment for LLM credentials (GEMINI_API_KEY / OPENAI_API_KEY)…",
-    status: "running",
-  }, onProgress);
-
-  const hasGemini = Boolean(process.env.GEMINI_API_KEY);
-  const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
-
-  let text = "";
-  let searches: { query: string; url?: string }[] = [];
-
-  if (hasGemini) {
-    // 1. Google Gemini API with Google Search Grounding (100% Free)
-    try {
-      const geminiRes = await callGemini(query, trail, onProgress);
-      text = geminiRes.text;
-      searches = geminiRes.searches;
-    } catch (err: any) {
-      push(trail, {
-        type: "verdict",
-        title: "Gemini live search error",
-        detail: err.message,
-        status: "warning",
-      }, onProgress);
-      throw err;
-    }
-  } else if (hasOpenAI) {
-    // 2. OpenAI Responses API with Web Search
-    try {
-      const openAiRes = await callOpenAI(query, trail, onProgress);
-      text = openAiRes.text;
-      searches = openAiRes.searches;
-    } catch (err: any) {
-      push(trail, {
-        type: "verdict",
-        title: "OpenAI live search error",
-        detail: err.message,
-        status: "warning",
-      }, onProgress);
-      throw err;
-    }
-  } else {
-    // 3. Neither key is set -> Check for pre-cataloged demo apps
-    const matchedKey = Object.keys(DEMO_GUIDES).find((k) => lower.includes(k));
-
-    if (matchedKey) {
-      push(trail, {
-        type: "analyze",
-        title: "Pre-Indexed Demo Mode Active",
-        detail: `No API key detected in environment. Using verified, pre-cataloged developer documentation for "${query}". (Add free GEMINI_API_KEY or OPENAI_API_KEY for live arbitrary search).`,
-        status: "completed",
-      }, onProgress);
-
-      const demoGuide = DEMO_GUIDES[matchedKey] as Guide;
-      push(trail, {
-        type: "fetch",
-        title: "Official Developer Documentation",
-        detail: `Retrieved specs from ${demoGuide.evidence[0]?.sourceUrl || "official docs"}`,
-        url: demoGuide.evidence[0]?.sourceUrl || undefined,
-        status: "completed",
-      }, onProgress);
-
-      push(trail, {
-        type: "validate",
-        title: "Schema Validated",
-        detail: "Passed Zod schema validation.",
-        status: "completed",
-      }, onProgress);
-
-      const confidenceScore = confidenceFrom(demoGuide);
-      push(trail, {
-        type: "verdict",
-        title: "Investigation Complete",
-        detail: `Field guide ready · Confidence: ${confidenceScore}% · Pre-indexed documentation`,
-        status: "completed",
-      }, onProgress);
-
-      return { guide: demoGuide, trail, confidenceScore };
-    }
-
-    // Unrecognized app without key
-    const msg =
-      "No LLM API key detected. Please add a 100% FREE GEMINI_API_KEY (from aistudio.google.com/app/apikey) or OPENAI_API_KEY in your .env.local file or Vercel settings. Alternatively, you can test suggested apps (Stripe, Salesforce, Figma, Zendesk, Asana) in pre-indexed demo mode.";
-    push(trail, {
-      type: "verdict",
-      title: "API Key Required for Uncataloged Apps",
-      detail: msg,
-      status: "warning",
-    }, onProgress);
+  if (!key) {
+    const msg = "GROQ_API_KEY is not set. Add it to .env.local (local) or Vercel env vars (prod). Get a free key at console.groq.com.";
+    push(trail, { type: "verdict", title: "Live research unavailable", detail: msg, status: "warning" }, onProgress);
     throw new Error(msg);
   }
 
-  // Populate research trail from live searches
-  for (const s of searches) {
-    push(trail, {
-      type: "fetch",
-      title: "Read Official Documentation",
-      detail: s.query,
-      url: s.url,
-      status: "completed",
-    }, onProgress);
+  push(trail, { type: "search", title: `Investigating "${query}"`, detail: "Analyzing provider OAuth setup, scopes, and capability ceiling…", status: "running" }, onProgress);
+
+  let model: string;
+  try {
+    model = await resolveGroqModel(key);
+    push(trail, { type: "analyze", title: "Model ready", detail: `Using ${model} (Groq)`, status: "completed" }, onProgress);
+  } catch (e: any) {
+    push(trail, { type: "verdict", title: "Live research unavailable", detail: e.message, status: "warning" }, onProgress);
+    throw e;
   }
 
-  push(trail, {
-    type: "analyze",
-    title: "Drafting Launch Guide",
-    detail: "Structuring capability ceilings, field directives, and approval gates…",
-    status: "completed",
-  }, onProgress);
+  const prompt = `${INSTRUCTIONS}\n\nApp to investigate: ${query}`;
 
-  // Validate output against Zod schema
+  let text: string;
+  try {
+    text = await groqChat(key, model, prompt);
+    push(trail, { type: "analyze", title: "Drafting guide", detail: "Structuring findings into the schema…", status: "completed" }, onProgress);
+  } catch (e: any) {
+    push(trail, { type: "verdict", title: "Live research unavailable", detail: e.message, status: "warning" }, onProgress);
+    throw e;
+  }
+
   let guide: Guide;
   try {
-    const parsed = JSON.parse(stripFences(text));
-    guide = GuideSchema.parse(parsed);
-  } catch (e: any) {
-    push(trail, {
-      type: "validate",
-      title: "Schema validation failure",
-      detail: "Attempted repair on unstructured output: " + String(e).slice(0, 150),
-      status: "warning",
-    }, onProgress);
-    throw new Error(`Model returned invalid guide structure: ${String(e).slice(0, 200)}`);
+    guide = GuideSchema.parse(JSON.parse(stripFences(text)));
+  } catch (err: any) {
+    push(trail, { type: "validate", title: "Schema repair", detail: "First draft failed validation — asking the model to correct it…", status: "warning" }, onProgress);
+    const repaired = await groqChat(key, model, `Fix this JSON to EXACTLY match the schema. Return ONLY JSON.\n${SCHEMA_SPEC}\n\nError: ${String(err).slice(0, 200)}\n\nJSON:\n${text.slice(0, 6000)}`);
+    guide = GuideSchema.parse(JSON.parse(stripFences(repaired)));
   }
 
-  // Enforce evidence integrity: strip any model-generated TESTED labels
-  guide.evidence = (guide.evidence || []).map((e) =>
-    e.label === "TESTED" ? { ...e, label: "UNVERIFIED" as const } : e
-  );
+  push(trail, { type: "validate", title: "Schema validated", detail: "Guide passed Zod validation.", status: "completed" }, onProgress);
+
+  // Safety net: the model may not award itself TESTED.
+  guide.evidence = (guide.evidence || []).map((e) => (e.label === "TESTED" ? { ...e, label: "UNVERIFIED" as const } : e));
   guide.id = guide.id || `gen-${query.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
-  push(trail, {
-    type: "validate",
-    title: "Schema Validated",
-    detail: "Guide passed strict Zod validation.",
-    status: "completed",
-  }, onProgress);
-
   const confidenceScore = confidenceFrom(guide);
-  push(trail, {
-    type: "verdict",
-    title: "Investigation Complete",
-    detail: `Guide generated · Confidence ${confidenceScore}% · ${searches.length} live documentation sources verified`,
-    status: "completed",
-  }, onProgress);
-
+  push(trail, { type: "verdict", title: "Done", detail: `Guide generated · confidence ${confidenceScore}%`, status: "completed" }, onProgress);
   return { guide, trail, confidenceScore };
 }

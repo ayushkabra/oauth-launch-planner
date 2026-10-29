@@ -36,15 +36,40 @@ export const LiveAgentInvestigator: React.FC<LiveAgentInvestigatorProps> = ({
   const [trail, setTrail] = useState<ResearchTrailItem[]>([]);
   const [result, setResult] = useState<LiveInvestigationResult | null>(null);
 
-  const SUGGESTED_APPS = ["Salesforce", "Stripe", "Figma", "Zendesk", "Asana"];
+  const SUGGESTED_APPS = ["Salesforce", "Stripe", "PostHog", "Figma", "Box", "Zendesk", "Asana"];
 
   const handleStartInvestigation = async (appName?: string) => {
     const target = appName || inputQuery;
     if (!target.trim() || isRunning) return;
 
     setIsRunning(true);
-    setTrail([]);
     setResult(null);
+
+    // Provide IMMEDIATE visual feedback so user sees live execution right away
+    setTrail([
+      {
+        id: "step-search",
+        timestamp: new Date().toISOString(),
+        type: "search",
+        title: `Live Search: "${target}"`,
+        detail: `Searching live official documentation for "${target}" OAuth 2.0 endpoints and developer portal…`,
+        status: "running",
+      },
+    ]);
+
+    const progressTimer = setTimeout(() => {
+      setTrail((prev) => [
+        ...prev,
+        {
+          id: "step-analyze",
+          timestamp: new Date().toISOString(),
+          type: "analyze",
+          title: "Analyzing Permissions & Ceilings",
+          detail: "Evaluating scope tiers, approval wait queues, and Step 0 capability ceilings…",
+          status: "running",
+        },
+      ]);
+    }, 1200);
 
     try {
       // Call the server route so the API key stays server-side (never in the browser).
@@ -53,15 +78,14 @@ export const LiveAgentInvestigator: React.FC<LiveAgentInvestigatorProps> = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: target }),
       });
+      clearTimeout(progressTimer);
+
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Investigation failed");
 
-      // Replay the REAL research trail progressively for a live feel.
+      // Set the REAL research trail from the server
       const steps: ResearchTrailItem[] = data.trail || [];
-      for (const step of steps) {
-        setTrail((prev) => [...prev, step]);
-        await new Promise((r) => setTimeout(r, 450));
-      }
+      setTrail(steps);
 
       const final: LiveInvestigationResult = {
         guide: data.guide,
@@ -71,6 +95,7 @@ export const LiveAgentInvestigator: React.FC<LiveAgentInvestigatorProps> = ({
       setResult(final);
       onGuideGenerated(final.guide);
     } catch (err: any) {
+      clearTimeout(progressTimer);
       setTrail((prev) => [
         ...prev,
         {
@@ -78,7 +103,7 @@ export const LiveAgentInvestigator: React.FC<LiveAgentInvestigatorProps> = ({
           timestamp: new Date().toISOString(),
           type: "verdict",
           title: "Live research unavailable",
-          detail: err?.message || "Request failed. Is OPENAI_API_KEY set on the server?",
+          detail: err?.message || "Request failed. Check GEMINI_API_KEY in environment variables.",
           status: "warning",
         },
       ]);
